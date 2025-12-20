@@ -50,13 +50,6 @@ I enjoy working with **Python, SQL, and data pipelines**, and I like building pr
 
 ---
 
-## 🧩 Featured Projects
-- **Project 1** — one-line description + link  
-- **Project 2** — one-line description + link  
-- **Project 3** — one-line description + link  
-
----
-
 ### ✅ Currently learning
 - DSA (problem-solving + patterns)
 - Backend engineering + databases
