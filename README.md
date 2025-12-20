@@ -10,9 +10,8 @@ I enjoy working with **Python, SQL, and data pipelines**, and I like building pr
 ---
 
 ### 🌐 Socials
-- 📧 Email: your-email@example.com  
-- 💼 LinkedIn: https://linkedin.com/in/your-profile  
-- 🌍 Portfolio: https://your-website.com  
+- 📧 Email: f20240909@pilani.bits-pilani.ac.in
+- 💼 LinkedIn:  https://www.linkedin.com/in/prapti-patra-4581a031b/
 
 ---
 
@@ -42,11 +41,11 @@ I enjoy working with **Python, SQL, and data pipelines**, and I like building pr
 
 <p align="center">
   <img height="160" src="https://github-readme-stats.vercel.app/api?username=YOUR_USERNAME&show_icons=true&theme=tokyonight&hide_border=true" />
-  <img height="160" src="https://github-readme-streak-stats.herokuapp.com/?user=YOUR_USERNAME&theme=tokyonight&hide_border=true" />
+  <img height="160" src="https://github-readme-streak-stats.herokuapp.com/?user=PraptiPatra&theme=tokyonight&hide_border=true" />
 </p>
 
 <p align="center">
-  <img height="160" src="https://github-readme-stats.vercel.app/api/top-langs/?username=YOUR_USERNAME&layout=compact&theme=tokyonight&hide_border=true" />
+  <img height="160" src="https://github-readme-stats.vercel.app/api/top-langs/?username=PraptiPatra&layout=compact&theme=tokyonight&hide_border=true" />
 </p>
 
 ---
