@@ -1,13 +1,11 @@
 const topicInput = document.getElementById("topicInput");
 const scriptInput = document.getElementById("scriptInput");
 const startSessionBtn = document.getElementById("startSessionBtn");
-const pauseBtn = document.getElementById("pauseBtn");
-const resetBtn = document.getElementById("resetBtn");
 const statusEl = document.getElementById("status");
 const canvas = document.getElementById("whiteboard");
 const ctx = canvas.getContext("2d");
 const timeLabel = document.getElementById("timeLabel");
-const convaiWidget = document.getElementById("convaiWidget");
+const convaiWidget = document.getElementById("convaiAgent");
 const agentMeta = document.getElementById("agentMeta");
 
 const DEFAULT_SCRIPT = `[t=0.5] Compound Interest
@@ -233,7 +231,6 @@ function startTimeline() {
   if (isTimelineRunning) return;
   isTimelineRunning = true;
   timelineStartPerf = performance.now();
-  pauseBtn.disabled = false;
   startRenderLoop();
 }
 
@@ -261,20 +258,6 @@ function startBoardFromScript() {
   return true;
 }
 
-function handlePause() {
-  pauseTimeline();
-  setStatus("Whiteboard paused.", "normal");
-}
-
-function handleReset() {
-  pauseTimeline();
-  timelineOffsetSeconds = 0;
-  cancelAnimationFrame(animationFrame);
-  renderBoard(0);
-  setStatus("Board reset.", "normal");
-  pauseBtn.disabled = true;
-}
-
 function wireAgentEvents() {
   if (!convaiWidget) return;
 
@@ -288,7 +271,10 @@ function wireAgentEvents() {
 }
 
 async function configureConvaiWidget() {
-  if (!convaiWidget) return;
+  if (!convaiWidget) {
+    setStatus("Agent widget container is missing from the page.", "error");
+    return;
+  }
 
   try {
     const response = await fetch("/api/config");
@@ -324,6 +310,17 @@ async function configureConvaiWidget() {
   }
 }
 
+async function waitForWidgetStartMethod(timeoutMs = 5000) {
+  const start = performance.now();
+  while (performance.now() - start < timeoutMs) {
+    if (typeof convaiWidget?.startConversation === "function") {
+      return true;
+    }
+    await new Promise((resolve) => setTimeout(resolve, 150));
+  }
+  return false;
+}
+
 async function startSession() {
   startSessionBtn.disabled = true;
   setStatus("Configuring agent and whiteboard session...", "normal");
@@ -338,7 +335,8 @@ async function startSession() {
       return;
     }
 
-    if (typeof convaiWidget?.startConversation === "function") {
+    const startMethodReady = await waitForWidgetStartMethod();
+    if (startMethodReady) {
       await convaiWidget.startConversation();
       setStatus("Session started: agent call + whiteboard sync are live.", "ok");
     } else {
@@ -362,8 +360,6 @@ function bootstrap() {
   configureConvaiWidget();
   wireAgentEvents();
   startSessionBtn.addEventListener("click", startSession);
-  pauseBtn.addEventListener("click", handlePause);
-  resetBtn.addEventListener("click", handleReset);
   window.addEventListener("resize", resizeCanvas);
   resizeCanvas();
 }
