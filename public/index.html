@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Voice + Whiteboard Agent</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <header class="header">
+        <h1>ElevenLabs Voice + Whiteboard Agent</h1>
+        <p class="subtitle">
+          Side-by-side teaching: generated narration + synchronized board drawing.
+        </p>
+      </header>
+
+      <main class="layout">
+        <section class="panel">
+          <h2>Voice agent controls</h2>
+
+          <div class="control-group">
+            <label class="label" for="voiceSelect">Voice</label>
+            <select id="voiceSelect"></select>
+          </div>
+
+          <div class="control-group">
+            <label class="label" for="topicInput">Topic title</label>
+            <input id="topicInput" type="text" />
+          </div>
+
+          <div class="control-group">
+            <label class="label" for="scriptInput"
+              >Narration script with whiteboard cues</label
+            >
+            <textarea id="scriptInput" rows="12"></textarea>
+            <div class="timeline-hint">
+              Prefix cue lines with <code>[t=seconds]</code> to control drawing timing.
+              Example: <code>[t=4.2] Rate (r) is annual % growth</code>
+            </div>
+          </div>
+
+          <div class="buttons">
+            <button id="playBtn" type="button" class="primary">
+              Generate &amp; Play
+            </button>
+            <button id="pauseBtn" type="button" class="secondary" disabled>
+              Pause
+            </button>
+            <button id="resetBtn" type="button" class="secondary">
+              Reset
+            </button>
+          </div>
+
+          <audio id="audioPlayer" controls></audio>
+          <div id="status" class="status">Ready.</div>
+        </section>
+
+        <section class="panel">
+          <h2>Whiteboard agent</h2>
+          <div class="board-wrap">
+            <div class="board-toolbar">
+              <span>Auto-drawing timeline follows audio playback</span>
+              <span id="timeLabel" class="time">0.00s</span>
+            </div>
+            <canvas id="whiteboard" width="1280" height="720"></canvas>
+            <div class="legend">
+              <span><span class="dot draw"></span>Strokes</span>
+              <span><span class="dot text"></span>Handwritten text</span>
+              <span><span class="dot shape"></span>Diagram boxes/arrows</span>
+            </div>
+          </div>
+        </section>
+      </main>
+    </div>
+    <script defer src="/app.js"></script>
+  </body>
+</html>

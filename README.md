@@ -1,56 +1,93 @@
-<!-- Banner (optional) -->
-<!-- ![banner](https://your-banner-link) -->
+# ElevenLabs Voice + Whiteboard Agent (MVP)
 
-# 👋 Hi, I’m Prapti Patra
+This project is a starter web app for the exact experience you described:
 
-### 🚀 About Me
-I’m a 2nd year student exploring **Data Analytics, Machine Learning, and backend systems**.  
-I enjoy working with **Python, SQL, and data pipelines**, and I like building projects that combine clean engineering with practical problem-solving.
+- an **ElevenLabs voice agent** speaks your lesson
+- a **whiteboard agent** draws in parallel
+- drawing appears progressively (stroke/text reveal) so it feels like a pen is teaching live
 
----
+The app is intentionally simple so you can extend it into production later.
 
-### 🌐 Socials
-- 📧 Email: f20240909@pilani.bits-pilani.ac.in
-- 💼 LinkedIn:  https://www.linkedin.com/in/prapti-patra-4581a031b/
+## What this MVP includes
 
----
+- Node.js + Express backend
+- API proxy to ElevenLabs:
+  - `GET /api/voices`
+  - `POST /api/lesson-audio` (text to speech)
+- Frontend with:
+  - side-by-side voice controls + whiteboard canvas
+  - script editor with timed cue format (`[t=seconds] message`)
+  - synchronized animation loop tied to `audio.currentTime`
 
-## 💻 Tech Stack
+## Architecture
 
-![Python](https://img.shields.io/badge/Python-000?style=for-the-badge&logo=python)
-![C++](https://img.shields.io/badge/C%2B%2B-000?style=for-the-badge&logo=c%2B%2B)
-![JavaScript](https://img.shields.io/badge/JavaScript-000?style=for-the-badge&logo=javascript)
-![SQL](https://img.shields.io/badge/SQL-000?style=for-the-badge&logo=postgresql)
-![Postgres](https://img.shields.io/badge/Postgres-000?style=for-the-badge&logo=postgresql)
-![MySQL](https://img.shields.io/badge/MySQL-000?style=for-the-badge&logo=mysql)
-![Docker](https://img.shields.io/badge/Docker-000?style=for-the-badge&logo=docker)
-![Git](https://img.shields.io/badge/Git-000?style=for-the-badge&logo=git)
-![GitHub](https://img.shields.io/badge/GitHub-000?style=for-the-badge&logo=github)
+1. You write a script like:
 
-<!-- Add/Remove badges here -->
-<!-- Examples:
-![NumPy](https://img.shields.io/badge/NumPy-000?style=for-the-badge&logo=numpy)
-![Pandas](https://img.shields.io/badge/Pandas-000?style=for-the-badge&logo=pandas)
-![TensorFlow](https://img.shields.io/badge/TensorFlow-000?style=for-the-badge&logo=tensorflow)
-![ScikitLearn](https://img.shields.io/badge/ScikitLearn-000?style=for-the-badge&logo=scikitlearn)
--->
+```txt
+[t=0.5] Compound Interest
+[t=2.0] Formula: A = P(1 + r/n)^(nt)
+[t=4.0] P = Principal
+```
 
----
+2. Frontend parses cue lines and builds timeline events.
+3. Backend sends narration text to ElevenLabs and returns MP3.
+4. Browser plays MP3 and continuously renders board state based on current audio time.
 
-## 📊 GitHub Stats
+## Quick start
 
-<p align="center">
-  <img height="160" src="https://github-readme-stats.vercel.app/api?username=PraptiPatra&show_icons=true&theme=tokyonight&hide_border=true" />
-  <img height="160" src="https://github-readme-streak-stats.herokuapp.com/?user=PraptiPatra&theme=tokyonight&hide_border=true" />
-</p>
+### 1) Install
 
-<p align="center">
-  <img height="160" src="https://github-readme-stats.vercel.app/api/top-langs/?username=PraptiPatra&layout=compact&theme=tokyonight&hide_border=true" />
-</p>
+```bash
+npm install
+```
 
----
+### 2) Configure environment
 
-### ✅ Currently learning
-- DSA (problem-solving + patterns)
-- Backend engineering + databases
-- Open-source workflows (issues → PRs → reviews)
+```bash
+cp .env.example .env
+```
+
+Then fill:
+
+- `ELEVENLABS_API_KEY`
+- optionally `ELEVENLABS_VOICE_ID`
+- optionally `ELEVENLABS_MODEL_ID`
+
+### 3) Run
+
+```bash
+npm run dev
+```
+
+Open: `http://localhost:3000`
+
+## Cue format
+
+Each line should start with:
+
+```txt
+[t=<seconds>] <text to narrate and draw>
+```
+
+Example:
+
+```txt
+[t=0.5] The water cycle has four stages
+[t=2.2] Evaporation
+[t=4.6] Condensation
+[t=7.0] Precipitation
+[t=9.1] Collection
+```
+
+## How to evolve this into a production-grade version
+
+- Replace text-line renderer with richer primitives (shapes, arrows, formulas, diagrams).
+- Add an LLM planner that converts topic -> narration + structured whiteboard actions.
+- Use ElevenLabs word timestamps (where available) for tighter sync than manual cues.
+- Persist lessons in a database.
+- Add collaborative mode (teacher can pause/edit board in real time).
+
+## Scripts
+
+- `npm run dev` - run in watch mode
+- `npm start` - run once

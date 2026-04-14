@@ -1,0 +1,22 @@
+{
+  "name": "elevenlabs-whiteboard-agent",
+  "version": "1.0.0",
+  "description": "Side-by-side ElevenLabs voice agent and synchronized whiteboard visualizer",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js"
+  },
+  "keywords": [
+    "elevenlabs",
+    "whiteboard",
+    "voice-agent",
+    "canvas"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "dotenv": "^16.6.1",
+    "express": "^5.1.0"
+  }
+}
