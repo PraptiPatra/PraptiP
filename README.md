@@ -5,7 +5,7 @@ This version upgrades your app from static cue playback to a live, adaptive whit
 - Emma speaks through ElevenLabs conversational session
 - whiteboard updates from Emma's actual responses in real time
 - concept nodes + arrows are drawn as a progressive concept map
-- optional OpenRouter enhancement can improve concept extraction quality
+- optional OpenRouter/xAI enhancement can improve concept extraction quality
 
 ## Core behavior
 
@@ -45,6 +45,9 @@ cp .env.example .env
 - For smarter concept extraction via OpenRouter:
   - `OPENROUTER_API_KEY=...`
   - optionally `OPENROUTER_MODEL=openai/gpt-4o-mini`
+- Optional xAI/Grok fallback:
+  - `XAI_API_KEY=...`
+  - optionally `XAI_MODEL=grok-4-0709`
 
 If omitted, app uses heuristic concept extraction fallback.
 
@@ -76,7 +79,7 @@ http://localhost:3000
 - `GET /api/config` - returns agent/branch + hasApiKey
 - `GET /api/signed-url` - signed URL for authenticated mode (needs ElevenLabs API key)
 - `POST /api/whiteboard-plan` - concept extraction service
-  - uses OpenRouter if configured
+  - uses OpenRouter first, then xAI, then heuristic fallback
   - falls back to heuristic extraction otherwise
 
 ## Troubleshooting
@@ -98,6 +101,13 @@ http://localhost:3000
 - verify `OPENROUTER_API_KEY` is set in `.env`
 - restart server after env changes
 - `POST /api/whiteboard-plan` should return `"source":"openrouter"` when active
+
+### xAI enhancement not used
+
+- verify `XAI_API_KEY` is set in `.env`
+- restart server after env changes
+- make sure your xAI team has credits/licensing enabled
+- `POST /api/whiteboard-plan` should return `"source":"xai"` when active
 
 ## Notes on "exactly like video-scribe style"
 

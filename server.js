@@ -20,11 +20,164 @@ const DEFAULT_BRANCH_ID =
   process.env.ELEVENLABS_AGENT_BRANCH_ID ||
   "agtbrch_8901kkkm5qevfhjtp05ha011tf6j";
 
+const OPENROUTER_MODEL = process.env.OPENROUTER_MODEL || "openai/gpt-4o-mini";
+const XAI_MODEL = process.env.XAI_MODEL || "grok-4-0709";
+
 app.use(express.json({ limit: "1mb" }));
 app.use(express.static(path.join(__dirname, "public")));
 
 function getApiKey() {
   return process.env.ELEVENLABS_API_KEY;
+}
+
+function buildExtractionPrompt(text) {
+  return `
+Extract a concise whiteboard concept graph from this spoken response.
+Return only JSON with this shape:
+{
+  "concepts": [{"label":"string","score":0.0}],
+  "edges": [{"from":"label","to":"label","relation":"string"}]
+}
+Rules:
+- 3 to 7 concepts max
+- short labels (2-5 words)
+- edges should connect listed concepts only
+- no markdown, no prose
+
+Text:
+${text}
+`;
+}
+
+function normalizePlanResponse(parsed) {
+  if (!parsed || !Array.isArray(parsed.concepts)) {
+    return null;
+  }
+
+  const concepts = parsed.concepts
+    .filter((item) => item && typeof item.label === "string")
+    .slice(0, 7)
+    .map((item, index) => ({
+      label: item.label.trim().slice(0, 48),
+      score:
+        typeof item.score === "number" && Number.isFinite(item.score)
+          ? item.score
+          : 1 - index * 0.05,
+    }));
+
+  const labelSet = new Set(concepts.map((item) => item.label));
+  const edges = Array.isArray(parsed.edges)
+    ? parsed.edges
+        .filter(
+          (edge) =>
+            edge &&
+            typeof edge.from === "string" &&
+            typeof edge.to === "string" &&
+            labelSet.has(edge.from) &&
+            labelSet.has(edge.to) &&
+            edge.from !== edge.to
+        )
+        .slice(0, 10)
+        .map((edge) => ({
+          from: edge.from,
+          to: edge.to,
+          relation:
+            typeof edge.relation === "string"
+              ? edge.relation.slice(0, 28)
+              : "relates to",
+        }))
+    : [];
+
+  return { concepts, edges };
+}
+
+function tryParseJsonContent(content) {
+  if (!content) return null;
+  try {
+    return JSON.parse(content);
+  } catch {
+    const jsonMatch = String(content).match(/\{[\s\S]*\}/);
+    if (!jsonMatch) return null;
+    try {
+      return JSON.parse(jsonMatch[0]);
+    } catch {
+      return null;
+    }
+  }
+}
+
+async function extractWithOpenRouter(prompt, openRouterKey) {
+  const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${openRouterKey}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      model: OPENROUTER_MODEL,
+      temperature: 0.1,
+      messages: [
+        {
+          role: "system",
+          content:
+            "You are a strict JSON extraction engine for whiteboard concept mapping.",
+        },
+        { role: "user", content: prompt },
+      ],
+    }),
+  });
+
+  if (!response.ok) {
+    const details = await response.text();
+    throw new Error(`OpenRouter request failed: ${details}`);
+  }
+
+  const payload = await response.json();
+  const content =
+    payload?.choices?.[0]?.message?.content || payload?.choices?.[0]?.text || "";
+  const parsed = tryParseJsonContent(content);
+  const normalized = normalizePlanResponse(parsed);
+  if (!normalized) {
+    throw new Error("OpenRouter returned invalid JSON shape.");
+  }
+  return { source: "openrouter", ...normalized };
+}
+
+async function extractWithXai(prompt, xaiKey) {
+  const response = await fetch("https://api.x.ai/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${xaiKey}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      model: XAI_MODEL,
+      temperature: 0.1,
+      messages: [
+        {
+          role: "system",
+          content:
+            "You are a strict JSON extraction engine for whiteboard concept mapping.",
+        },
+        { role: "user", content: prompt },
+      ],
+    }),
+  });
+
+  if (!response.ok) {
+    const details = await response.text();
+    throw new Error(`xAI request failed: ${details}`);
+  }
+
+  const payload = await response.json();
+  const content =
+    payload?.choices?.[0]?.message?.content || payload?.choices?.[0]?.text || "";
+  const parsed = tryParseJsonContent(content);
+  const normalized = normalizePlanResponse(parsed);
+  if (!normalized) {
+    throw new Error("xAI returned invalid JSON shape.");
+  }
+  return { source: "xai", ...normalized };
 }
 
 app.get("/api/health", (_, res) => {
@@ -129,136 +282,35 @@ app.post("/api/whiteboard-plan", async (req, res) => {
     });
   }
 
+  const prompt = buildExtractionPrompt(text);
+  const warnings = [];
   const openRouterKey = process.env.OPENROUTER_API_KEY;
-  const openRouterModel =
-    process.env.OPENROUTER_MODEL || "openai/gpt-4o-mini";
+  const xaiKey = process.env.XAI_API_KEY;
 
-  if (!openRouterKey) {
-    return res.json({
-      source: "heuristic",
-      concepts: fallbackConcepts,
-      edges: fallbackEdges,
-    });
-  }
-
-  try {
-    const prompt = `
-Extract a concise whiteboard concept graph from this spoken response.
-Return only JSON with this shape:
-{
-  "concepts": [{"label":"string","score":0.0}],
-  "edges": [{"from":"label","to":"label","relation":"string"}]
-}
-Rules:
-- 3 to 7 concepts max
-- short labels (2-5 words)
-- edges should connect listed concepts only
-- no markdown, no prose
-
-Text:
-${text}
-`;
-
-    const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${openRouterKey}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: openRouterModel,
-        temperature: 0.1,
-        messages: [
-          {
-            role: "system",
-            content:
-              "You are a strict JSON extraction engine for whiteboard concept mapping.",
-          },
-          { role: "user", content: prompt },
-        ],
-      }),
-    });
-
-    if (!response.ok) {
-      const details = await response.text();
-      return res.json({
-        source: "heuristic",
-        warning: `OpenRouter request failed: ${details}`,
-        concepts: fallbackConcepts,
-        edges: fallbackEdges,
-      });
-    }
-
-    const payload = await response.json();
-    const content =
-      payload?.choices?.[0]?.message?.content ||
-      payload?.choices?.[0]?.text ||
-      "";
-
-    let parsed = null;
+  if (openRouterKey) {
     try {
-      parsed = JSON.parse(content);
-    } catch {
-      const jsonMatch = content.match(/\{[\s\S]*\}/);
-      if (jsonMatch) {
-        parsed = JSON.parse(jsonMatch[0]);
-      }
+      const result = await extractWithOpenRouter(prompt, openRouterKey);
+      return res.json(result);
+    } catch (error) {
+      warnings.push(error.message);
     }
-
-    if (!parsed || !Array.isArray(parsed.concepts)) {
-      return res.json({
-        source: "heuristic",
-        warning: "OpenRouter returned invalid JSON shape.",
-        concepts: fallbackConcepts,
-        edges: fallbackEdges,
-      });
-    }
-
-    const concepts = parsed.concepts
-      .filter((item) => item && typeof item.label === "string")
-      .slice(0, 7)
-      .map((item, index) => ({
-        label: item.label.trim().slice(0, 48),
-        score:
-          typeof item.score === "number" && Number.isFinite(item.score)
-            ? item.score
-            : 1 - index * 0.05,
-      }));
-
-    const labelSet = new Set(concepts.map((item) => item.label));
-    const edges = Array.isArray(parsed.edges)
-      ? parsed.edges
-          .filter(
-            (edge) =>
-              edge &&
-              typeof edge.from === "string" &&
-              typeof edge.to === "string" &&
-              labelSet.has(edge.from) &&
-              labelSet.has(edge.to) &&
-              edge.from !== edge.to
-          )
-          .slice(0, 10)
-          .map((edge) => ({
-            from: edge.from,
-            to: edge.to,
-            relation:
-              typeof edge.relation === "string" ? edge.relation.slice(0, 28) : "relates to",
-          }))
-      : [];
-
-    return res.json({
-      source: "openrouter",
-      concepts,
-      edges,
-    });
-  } catch (error) {
-    return res.json({
-      source: "heuristic",
-      warning: error.message,
-      concepts: fallbackConcepts,
-      edges: fallbackEdges,
-    });
   }
+
+  if (xaiKey) {
+    try {
+      const result = await extractWithXai(prompt, xaiKey);
+      return res.json(result);
+    } catch (error) {
+      warnings.push(error.message);
+    }
+  }
+
+  return res.json({
+    source: "heuristic",
+    warning: warnings.length ? warnings.join(" | ") : undefined,
+    concepts: fallbackConcepts,
+    edges: fallbackEdges,
+  });
 });
 
 app.get("/api/voices", async (_, res) => {
