@@ -131,7 +131,7 @@ app.post("/api/lesson-audio", async (req, res) => {
   }
 });
 
-app.get("*", (_, res) => {
+app.get("/*splat", (_, res) => {
   res.sendFile(path.join(__dirname, "public", "index.html"));
 });
 
