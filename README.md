@@ -1,81 +1,54 @@
-# ElevenLabs Agent + Auto-Start Whiteboard Session
+# ElevenLabs Live Whiteboard (Interactive)
 
-This project gives you the exact experience you requested:
+This version upgrades your app from static cue playback to a live, adaptive whiteboard:
 
-- ElevenLabs conversational agent speaks on the left
-- whiteboard auto-draws on the right
-- a single **Start session** button configures both and starts in one flow
+- Emma speaks through ElevenLabs conversational session
+- whiteboard updates from Emma's actual responses in real time
+- concept nodes + arrows are drawn as a progressive concept map
+- optional OpenRouter enhancement can improve concept extraction quality
 
----
-
-## 1) What this app does
-
-### Speaking side
-
-- Embeds the ElevenLabs ConvAI widget (`<elevenlabs-convai>`).
-- Loads your configured `agent_id` from backend config.
-- If an API key is present, it also requests a signed URL that includes `branch_id`.
-
-### Whiteboard side
-
-- Reads a timeline script in format:
-
-```txt
-[t=seconds] message
-```
-
-- Converts each cue into animated board events.
-- Draws lines and handwritten-style text progressively to mimic live teaching.
-
-### Session behavior
+## Core behavior
 
 When you click **Start session**:
 
-1. Agent widget is configured.
-2. Whiteboard timeline is built from cues.
-3. Whiteboard timer starts from 0.
-4. App attempts to trigger widget conversation start programmatically.
-5. If browser/widget policy blocks auto-start, you press **Start call** in the widget (one click fallback).
+1. browser microphone permission is requested
+2. app starts a live ElevenLabs conversation with your configured agent
+3. app sends an optional kickoff prompt
+4. each `agent` message updates transcript + whiteboard concept map
+5. concepts are rendered as animated nodes and linked as the discussion evolves
 
----
+## Your configured agent defaults
 
-## 2) Preconfigured IDs (your agent)
+- `ELEVENLABS_CONVAI_AGENT_ID=agent_1301kkkm5pjgffdbe8awxav8nwtp`
+- `ELEVENLABS_CONVAI_BRANCH_ID=agtbrch_8901kkkm5qevfhjtp05ha011tf6j`
 
-- Agent ID: `agent_1301kkkm5pjgffdbe8awxav8nwtp`
-- Branch ID: `agtbrch_8901kkkm5qevfhjtp05ha011tf6j`
+You can run without API keys for public-agent mode.
 
-These are already set as defaults in server env/config logic.
+## Setup (local)
 
----
-
-## 3) Complete setup manual (step-by-step)
-
-### Prerequisites
-
-- Node.js 20+ recommended
-- npm
-- Internet connection (for widget script + ElevenLabs services)
-
-### Step A: install dependencies
+### 1) Install
 
 ```bash
 npm install
 ```
 
-### Step B: configure environment
+### 2) Create env file
 
 ```bash
 cp .env.example .env
 ```
 
-Open `.env` and set:
+### 3) (Optional) add keys
 
-- `ELEVENLABS_CONVAI_AGENT_ID` (already defaulted to your agent)
-- `ELEVENLABS_CONVAI_BRANCH_ID` (already defaulted to your branch)
-- `ELEVENLABS_API_KEY` (optional for public widget, recommended for signed-url/private setups)
-- `PORT` (default 3000)
+- For private/signed ElevenLabs sessions:
+  - `ELEVENLABS_API_KEY=...`
+- For smarter concept extraction via OpenRouter:
+  - `OPENROUTER_API_KEY=...`
+  - optionally `OPENROUTER_MODEL=openai/gpt-4o-mini`
 
-### Step C: run locally
+If omitted, app uses heuristic concept extraction fallback.
+
+### 4) Run
 
 ```bash
 npm run dev
@@ -87,115 +60,55 @@ Open:
 http://localhost:3000
 ```
 
-### Step D: verify backend config
+## How to use
 
-```bash
-curl -sS http://localhost:3000/api/config
-```
+1. Enter board title.
+2. Optionally enter a seed prompt (first user message to Emma).
+3. Click **Start session**.
+4. Speak with Emma.
+5. Watch the whiteboard build a live concept map from her responses.
+6. Click **End session** to stop audio + session.
+7. Click **Clear board** to reset the visual map.
 
-Expected shape:
+## API endpoints
 
-```json
-{
-  "agentId": "agent_...",
-  "branchId": "agtbrch_...",
-  "hasApiKey": true
-}
-```
+- `GET /api/health` - health check
+- `GET /api/config` - returns agent/branch + hasApiKey
+- `GET /api/signed-url` - signed URL for authenticated mode (needs ElevenLabs API key)
+- `POST /api/whiteboard-plan` - concept extraction service
+  - uses OpenRouter if configured
+  - falls back to heuristic extraction otherwise
 
----
+## Troubleshooting
 
-## 4) How to run a teaching session
+### Session starts but no speech
 
-1. Open the app in browser.
-2. Edit **Whiteboard title**.
-3. Edit **Timed whiteboard script**.
-4. Click **Start session**.
-5. If call does not auto-start, click **Start call** inside widget once.
-6. Whiteboard will continue in sync based on timeline cues.
-7. Use **Pause board** and **Reset board** as needed.
+- confirm browser microphone permission is granted
+- verify your agent is public if you are not using API key
+- open DevTools console and check conversation errors
 
----
+### Whiteboard not updating
 
-## 5) Cue authoring guide
+- ensure transcript is appearing in live log
+- if transcript is empty, agent messages are not arriving (session issue)
+- if transcript appears but concepts are weak, add OpenRouter key for stronger extraction
 
-### Format
+### OpenRouter enhancement not used
 
-Each line:
+- verify `OPENROUTER_API_KEY` is set in `.env`
+- restart server after env changes
+- `POST /api/whiteboard-plan` should return `"source":"openrouter"` when active
 
-```txt
-[t=<seconds>] <text to draw>
-```
+## Notes on "exactly like video-scribe style"
 
-Example:
+This implementation now reacts to real conversation content, but it still uses a structured concept-map drawing style rather than hand-sketch video frames.
+To reach true "hand with marker" animation quality, next step would be:
 
-```txt
-[t=0.5] Compound Interest
-[t=2.0] Formula: A = P(1 + r/n)^(nt)
-[t=4.0] P = Principal
-[t=6.0] r = Annual interest rate
-[t=8.0] t = Time in years
-```
+- vector stroke library / SVG path sequencing
+- layout planner per topic
+- optional image/icon generation pipeline
 
-### Best practices for good sync
-
-- Keep first cue around `0.3-0.8`.
-- Use increasing times (`0.5`, `2.0`, `4.1`, ...).
-- Keep each cue text concise.
-- Prefer 5-8 cues for a clean board.
-
----
-
-## 6) API endpoints reference
-
-- `GET /api/health`
-  - basic health check
-- `GET /api/config`
-  - returns agent/branch config used by frontend
-- `GET /api/signed-url`
-  - requests ElevenLabs signed URL with `agent_id` + `branch_id`
-  - requires `ELEVENLABS_API_KEY`
-
----
-
-## 7) Troubleshooting manual
-
-### Widget appears but call does not start automatically
-
-This can happen due to browser autoplay/user-gesture restrictions.
-
-Fix:
-
-- Click **Start session** first, then **Start call** inside widget.
-- Keep both actions in same browser tab.
-
-### Whiteboard not moving
-
-Check:
-
-- script contains valid cue lines
-- cue format exactly uses `[t=number] text`
-- first cue is not too late
-
-### “Signed URL” / auth errors
-
-Check:
-
-- `ELEVENLABS_API_KEY` is valid
-- agent access settings in ElevenLabs dashboard
-- branch ID belongs to the same agent
-
-### Agent not found / wrong voice assistant
-
-Check:
-
-- `ELEVENLABS_CONVAI_AGENT_ID`
-- response from `/api/config`
-- dashboard agent visibility/public status
-
----
-
-## 8) Scripts
+## Scripts
 
 - `npm run dev` - watch mode
-- `npm start` - run once
+- `npm start` - production run

@@ -84,6 +84,183 @@ app.get("/api/signed-url", async (_, res) => {
   }
 });
 
+app.post("/api/whiteboard-plan", async (req, res) => {
+  const text = String(req.body?.text || "").trim();
+  if (!text) {
+    return res.status(400).json({ error: "Request must include non-empty `text`." });
+  }
+
+  const fallbackKeywords = [
+    "facility 19",
+    "ai infrastructure",
+    "agent network",
+    "jarvis orchestration",
+    "system integration",
+    "workflow automation",
+    "operational intelligence",
+    "portfolio scaling",
+    "vendor coordination",
+    "service dispatch",
+    "reporting",
+    "compliance",
+  ];
+
+  const normalized = text.toLowerCase();
+  const matched = fallbackKeywords.filter((keyword) =>
+    normalized.includes(keyword)
+  );
+
+  const fallbackConcepts = (matched.length ? matched : fallbackKeywords.slice(0, 6))
+    .slice(0, 6)
+    .map((keyword, index) => ({
+      label: keyword
+        .split(" ")
+        .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+        .join(" "),
+      score: 1 - index * 0.08,
+    }));
+
+  const fallbackEdges = [];
+  for (let i = 1; i < fallbackConcepts.length; i += 1) {
+    fallbackEdges.push({
+      from: fallbackConcepts[i - 1].label,
+      to: fallbackConcepts[i].label,
+      relation: "supports",
+    });
+  }
+
+  const openRouterKey = process.env.OPENROUTER_API_KEY;
+  const openRouterModel =
+    process.env.OPENROUTER_MODEL || "openai/gpt-4o-mini";
+
+  if (!openRouterKey) {
+    return res.json({
+      source: "heuristic",
+      concepts: fallbackConcepts,
+      edges: fallbackEdges,
+    });
+  }
+
+  try {
+    const prompt = `
+Extract a concise whiteboard concept graph from this spoken response.
+Return only JSON with this shape:
+{
+  "concepts": [{"label":"string","score":0.0}],
+  "edges": [{"from":"label","to":"label","relation":"string"}]
+}
+Rules:
+- 3 to 7 concepts max
+- short labels (2-5 words)
+- edges should connect listed concepts only
+- no markdown, no prose
+
+Text:
+${text}
+`;
+
+    const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${openRouterKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: openRouterModel,
+        temperature: 0.1,
+        messages: [
+          {
+            role: "system",
+            content:
+              "You are a strict JSON extraction engine for whiteboard concept mapping.",
+          },
+          { role: "user", content: prompt },
+        ],
+      }),
+    });
+
+    if (!response.ok) {
+      const details = await response.text();
+      return res.json({
+        source: "heuristic",
+        warning: `OpenRouter request failed: ${details}`,
+        concepts: fallbackConcepts,
+        edges: fallbackEdges,
+      });
+    }
+
+    const payload = await response.json();
+    const content =
+      payload?.choices?.[0]?.message?.content ||
+      payload?.choices?.[0]?.text ||
+      "";
+
+    let parsed = null;
+    try {
+      parsed = JSON.parse(content);
+    } catch {
+      const jsonMatch = content.match(/\{[\s\S]*\}/);
+      if (jsonMatch) {
+        parsed = JSON.parse(jsonMatch[0]);
+      }
+    }
+
+    if (!parsed || !Array.isArray(parsed.concepts)) {
+      return res.json({
+        source: "heuristic",
+        warning: "OpenRouter returned invalid JSON shape.",
+        concepts: fallbackConcepts,
+        edges: fallbackEdges,
+      });
+    }
+
+    const concepts = parsed.concepts
+      .filter((item) => item && typeof item.label === "string")
+      .slice(0, 7)
+      .map((item, index) => ({
+        label: item.label.trim().slice(0, 48),
+        score:
+          typeof item.score === "number" && Number.isFinite(item.score)
+            ? item.score
+            : 1 - index * 0.05,
+      }));
+
+    const labelSet = new Set(concepts.map((item) => item.label));
+    const edges = Array.isArray(parsed.edges)
+      ? parsed.edges
+          .filter(
+            (edge) =>
+              edge &&
+              typeof edge.from === "string" &&
+              typeof edge.to === "string" &&
+              labelSet.has(edge.from) &&
+              labelSet.has(edge.to) &&
+              edge.from !== edge.to
+          )
+          .slice(0, 10)
+          .map((edge) => ({
+            from: edge.from,
+            to: edge.to,
+            relation:
+              typeof edge.relation === "string" ? edge.relation.slice(0, 28) : "relates to",
+          }))
+      : [];
+
+    return res.json({
+      source: "openrouter",
+      concepts,
+      edges,
+    });
+  } catch (error) {
+    return res.json({
+      source: "heuristic",
+      warning: error.message,
+      concepts: fallbackConcepts,
+      edges: fallbackEdges,
+    });
+  }
+});
+
 app.get("/api/voices", async (_, res) => {
   const apiKey = getApiKey();
   if (!apiKey) {

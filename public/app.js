@@ -1,38 +1,96 @@
+import { Conversation } from "https://unpkg.com/@elevenlabs/client/dist/index.js";
+
 const topicInput = document.getElementById("topicInput");
-const scriptInput = document.getElementById("scriptInput");
+const promptInput = document.getElementById("promptInput");
 const startSessionBtn = document.getElementById("startSessionBtn");
+const endSessionBtn = document.getElementById("endSessionBtn");
+const clearBoardBtn = document.getElementById("clearBoardBtn");
 const statusEl = document.getElementById("status");
 const canvas = document.getElementById("whiteboard");
 const ctx = canvas.getContext("2d");
 const timeLabel = document.getElementById("timeLabel");
-const convaiWidget = document.getElementById("convaiAgent");
 const agentMeta = document.getElementById("agentMeta");
+const transcriptLog = document.getElementById("transcriptLog");
 
-const DEFAULT_SCRIPT = `[t=0.5] Compound Interest
-[t=2.0] Formula: A = P(1 + r/n)^(nt)
-[t=4.0] P = Principal (starting money)
-[t=6.0] r = Annual interest rate
-[t=8.0] t = Time in years
-[t=10.0] Interest earns interest over time`;
+const DEFAULT_TOPIC = "Facility 19 AI Infrastructure";
+const DEFAULT_PROMPT =
+  "Explain Facility 19's three-layer architecture, then compare one company deployment versus portfolio-wide rollout for Hastings-style businesses.";
 
-const defaultTopic =
-  "Explain the basics of compound interest and how principal, rate, and time affect final amount.";
+const PALETTE = ["#1d4ed8", "#059669", "#dc2626", "#7c3aed", "#0f766e", "#d97706"];
+const STOP_WORDS = new Set([
+  "the",
+  "and",
+  "that",
+  "with",
+  "from",
+  "this",
+  "into",
+  "your",
+  "they",
+  "their",
+  "have",
+  "will",
+  "what",
+  "about",
+  "there",
+  "were",
+  "which",
+  "would",
+  "could",
+  "should",
+  "while",
+  "where",
+  "when",
+  "them",
+  "then",
+  "than",
+  "across",
+  "inside",
+  "being",
+  "each",
+  "more",
+  "most",
+  "very",
+  "just",
+  "only",
+  "also",
+  "once",
+  "does",
+  "dont",
+  "can't",
+  "wont",
+  "it's",
+  "facility",
+  "nineteen",
+  "emma",
+]);
 
-const PALETTE = ["#0f172a", "#1d4ed8", "#16a34a", "#dc2626", "#7c3aed", "#0f766e"];
+let activeConversation = null;
+let sessionStartedAt = 0;
+let elapsedRafId = null;
+let agentConfig = null;
+let boardModel = createEmptyBoardModel();
+let boardRafId = null;
 
-let boardTimeline = [];
-
-let animationFrame = null;
-let isTimelineRunning = false;
-let timelineStartPerf = 0;
-let timelineOffsetSeconds = 0;
-let widgetConfigured = false;
+function createEmptyBoardModel() {
+  return {
+    title: DEFAULT_TOPIC,
+    nodes: [],
+    edges: [],
+    seen: new Set(),
+  };
+}
 
 function setStatus(message, tone = "normal") {
   statusEl.textContent = message;
   statusEl.className = "status";
   if (tone === "ok") statusEl.classList.add("ok");
   if (tone === "error") statusEl.classList.add("error");
+}
+
+function updateControlsForSession(isRunning) {
+  startSessionBtn.disabled = isRunning;
+  endSessionBtn.disabled = !isRunning;
 }
 
 function resizeCanvas() {
@@ -42,324 +100,397 @@ function resizeCanvas() {
   canvas.width = Math.floor(cssWidth * ratio);
   canvas.height = Math.floor(cssHeight * ratio);
   ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
-  renderBoard(getTimelineSeconds());
+  renderBoard(performance.now());
 }
 
-function clearCanvas() {
-  ctx.fillStyle = "#ffffff";
-  ctx.fillRect(0, 0, canvas.clientWidth, canvas.clientHeight);
+function roundedRect(x, y, w, h, r = 12) {
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.lineTo(x + w - r, y);
+  ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+  ctx.lineTo(x + w, y + h - r);
+  ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+  ctx.lineTo(x + r, y + h);
+  ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+  ctx.lineTo(x, y + r);
+  ctx.quadraticCurveTo(x, y, x + r, y);
+  ctx.closePath();
 }
 
-function lineLength(points) {
-  let total = 0;
-  for (let i = 1; i < points.length; i += 1) {
-    const dx = points[i][0] - points[i - 1][0];
-    const dy = points[i][1] - points[i - 1][1];
-    total += Math.hypot(dx, dy);
-  }
-  return total;
-}
-
-function strokeUntil(points, progress) {
-  if (points.length < 2 || progress <= 0) return;
-  const total = lineLength(points);
-  const target = total * Math.max(0, Math.min(1, progress));
-  let traversed = 0;
+function drawArrow(fromX, fromY, toX, toY, color) {
+  const angle = Math.atan2(toY - fromY, toX - fromX);
+  const head = 12;
+  ctx.save();
+  ctx.strokeStyle = color;
+  ctx.fillStyle = color;
+  ctx.lineWidth = 2.2;
+  ctx.lineCap = "round";
+  ctx.beginPath();
+  ctx.moveTo(fromX, fromY);
+  ctx.lineTo(toX, toY);
+  ctx.stroke();
 
   ctx.beginPath();
-  ctx.moveTo(points[0][0], points[0][1]);
+  ctx.moveTo(toX, toY);
+  ctx.lineTo(toX - head * Math.cos(angle - Math.PI / 6), toY - head * Math.sin(angle - Math.PI / 6));
+  ctx.lineTo(toX - head * Math.cos(angle + Math.PI / 6), toY - head * Math.sin(angle + Math.PI / 6));
+  ctx.closePath();
+  ctx.fill();
+  ctx.restore();
+}
 
-  for (let i = 1; i < points.length; i += 1) {
-    const prev = points[i - 1];
-    const next = points[i];
-    const segment = Math.hypot(next[0] - prev[0], next[1] - prev[1]);
+function renderBoard(nowMs = performance.now()) {
+  const w = canvas.clientWidth;
+  const h = canvas.clientHeight;
+  ctx.clearRect(0, 0, w, h);
+  ctx.fillStyle = "#fbfdff";
+  ctx.fillRect(0, 0, w, h);
 
-    if (traversed + segment <= target) {
-      ctx.lineTo(next[0], next[1]);
-      traversed += segment;
-      continue;
-    }
-
-    const remaining = target - traversed;
-    const ratio = segment === 0 ? 0 : remaining / segment;
-    const x = prev[0] + (next[0] - prev[0]) * ratio;
-    const y = prev[1] + (next[1] - prev[1]) * ratio;
-    ctx.lineTo(x, y);
-    break;
-  }
-
+  ctx.save();
+  ctx.fillStyle = "#0f172a";
+  ctx.font = "700 42px Inter, system-ui, sans-serif";
+  ctx.fillText(boardModel.title || DEFAULT_TOPIC, 54, 64);
+  ctx.strokeStyle = "#0f172a";
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  ctx.moveTo(54, 76);
+  ctx.lineTo(Math.min(w - 54, 740), 76);
   ctx.stroke();
-}
-
-function drawTextProgress(event, progress) {
-  const visibleCount = Math.floor(event.text.length * progress);
-  const text = event.text.slice(0, visibleCount);
-  ctx.save();
-  ctx.fillStyle = event.color || "#0f172a";
-  ctx.font = `600 ${event.size || 24}px Inter, system-ui, sans-serif`;
-  ctx.fillText(text, event.x, event.y);
   ctx.restore();
-}
 
-function drawStrokeProgress(event, progress) {
-  ctx.save();
-  ctx.strokeStyle = event.color || "#111827";
-  ctx.lineWidth = event.width || 4;
-  ctx.lineCap = "round";
-  ctx.lineJoin = "round";
-  strokeUntil(event.points || [], progress);
-  ctx.restore();
-}
-
-function renderBoard(currentTime) {
-  clearCanvas();
-  if (timeLabel) {
-    timeLabel.textContent = `${currentTime.toFixed(2)}s`;
+  const nodeById = new Map(boardModel.nodes.map((node) => [node.id, node]));
+  for (const edge of boardModel.edges) {
+    const source = nodeById.get(edge.from);
+    const target = nodeById.get(edge.to);
+    if (!source || !target) continue;
+    const sx = source.x + source.w;
+    const sy = source.y + source.h / 2;
+    const tx = target.x;
+    const ty = target.y + target.h / 2;
+    drawArrow(sx, sy, tx, ty, "#64748b");
   }
-  boardTimeline.forEach((event) => {
-    if (currentTime < event.start) return;
-    const progress = event.duration
-      ? (currentTime - event.start) / event.duration
-      : 1;
-    const clamped = Math.max(0, Math.min(1, progress));
 
-    if (event.type === "stroke") drawStrokeProgress(event, clamped);
-    if (event.type === "text") drawTextProgress(event, clamped);
-  });
-}
+  let stillAnimating = false;
+  for (const node of boardModel.nodes) {
+    const introMs = node.addedAt ? nowMs - node.addedAt : 9_999;
+    const progress = Math.max(0, Math.min(1, introMs / 550));
+    if (progress < 1) stillAnimating = true;
+    const alpha = 0.2 + progress * 0.8;
+    const revealChars = Math.max(1, Math.floor(node.label.length * progress));
+    const visibleText = node.label.slice(0, revealChars);
 
-function startRenderLoop() {
-  cancelAnimationFrame(animationFrame);
-  const tick = () => {
-    renderBoard(getTimelineSeconds());
-    if (isTimelineRunning) {
-      animationFrame = requestAnimationFrame(tick);
+    ctx.save();
+    ctx.globalAlpha = alpha;
+    ctx.fillStyle = "#ffffff";
+    ctx.strokeStyle = node.color;
+    ctx.lineWidth = 3;
+    roundedRect(node.x, node.y, node.w, node.h, 14);
+    ctx.fill();
+    ctx.stroke();
+    ctx.fillStyle = node.color;
+    ctx.font = "700 28px Inter, system-ui, sans-serif";
+    ctx.fillText(visibleText, node.x + 16, node.y + 42);
+
+    if (node.subtext) {
+      const subChars = Math.max(0, Math.floor(node.subtext.length * Math.max(0, progress - 0.25) / 0.75));
+      const visibleSub = node.subtext.slice(0, subChars);
+      ctx.fillStyle = "#334155";
+      ctx.font = "500 18px Inter, system-ui, sans-serif";
+      ctx.fillText(visibleSub, node.x + 16, node.y + 70);
     }
-  };
-  animationFrame = requestAnimationFrame(tick);
-}
-
-function parseCueScript(script) {
-  const lines = script.split("\n");
-  const cueRegex = /^\[t=(\d+(?:\.\d+)?)\]\s*(.+)$/i;
-  const cues = [];
-  lines.forEach((line) => {
-    const trimmed = line.trim();
-    if (!trimmed) return;
-    const match = trimmed.match(cueRegex);
-    if (!match) return;
-    cues.push({ at: Number(match[1]), text: match[2] });
-  });
-  return cues;
-}
-
-function buildStrokeForCue(index) {
-  const baseY = 140 + index * 72;
-  const width = canvas.clientWidth || 1000;
-  const left = Math.max(60, width * 0.08);
-  const right = Math.min(width - 90, width * 0.92);
-  return [
-    [left, baseY + 10],
-    [right, baseY + 10],
-  ];
-}
-
-function timelineFromCues(cues, topic) {
-  const timeline = [];
-  const safeTopic = topic?.trim() || "Topic";
-  timeline.push({
-    type: "text",
-    start: 0.2,
-    duration: 1.2,
-    text: safeTopic,
-    x: 70,
-    y: 70,
-    size: 40,
-    color: "#0f172a",
-  });
-
-  timeline.push({
-    type: "stroke",
-    start: 0.25,
-    duration: 1.1,
-    points: [
-      [60, 85],
-      [Math.max(360, (canvas.clientWidth || 1100) * 0.62), 85],
-    ],
-    color: "#111827",
-    width: 4,
-  });
-
-  const safeCues = cues
-    .slice(0, 8)
-    .sort((a, b) => a.at - b.at)
-    .map((cue, index) => ({ ...cue, index }));
-
-  safeCues.forEach((cue) => {
-    const baseStart = Math.max(0, cue.at);
-    timeline.push({
-      type: "stroke",
-      start: baseStart,
-      duration: 0.8,
-      points: buildStrokeForCue(cue.index),
-      color: PALETTE[cue.index % PALETTE.length],
-      width: 3,
-    });
-
-    timeline.push({
-      type: "text",
-      start: baseStart + 0.15,
-      duration: Math.max(1.1, Math.min(2.8, cue.text.length * 0.03)),
-      text: cue.text,
-      x: 80,
-      y: 130 + cue.index * 72,
-      size: 30,
-      color: PALETTE[cue.index % PALETTE.length],
-    });
-  });
-
-  return timeline;
-}
-
-function getTimelineSeconds() {
-  if (!isTimelineRunning) return timelineOffsetSeconds;
-  const elapsed = (performance.now() - timelineStartPerf) / 1000;
-  return timelineOffsetSeconds + elapsed;
-}
-
-function startTimeline() {
-  if (isTimelineRunning) return;
-  isTimelineRunning = true;
-  timelineStartPerf = performance.now();
-  startRenderLoop();
-}
-
-function pauseTimeline() {
-  if (!isTimelineRunning) return;
-  timelineOffsetSeconds = getTimelineSeconds();
-  isTimelineRunning = false;
-  cancelAnimationFrame(animationFrame);
-}
-
-function startFromZero() {
-  timelineOffsetSeconds = 0;
-  renderBoard(0);
-  startTimeline();
-}
-
-function startBoardFromScript() {
-  const cues = parseCueScript(scriptInput.value);
-  if (!cues.length) {
-    setStatus("Add at least one valid [t=seconds] cue line first.", "error");
-    return false;
+    ctx.restore();
   }
-  boardTimeline = timelineFromCues(cues, topicInput.value);
-  startFromZero();
-  return true;
+
+  if (stillAnimating) {
+    if (!boardRafId) {
+      boardRafId = requestAnimationFrame((t) => {
+        boardRafId = null;
+        renderBoard(t);
+      });
+    }
+  }
 }
 
-function wireAgentEvents() {
-  if (!convaiWidget) return;
-
-  convaiWidget.addEventListener("elevenlabs-convai:call", () => {
-    setStatus("ElevenLabs call started.", "ok");
-  });
-
-  convaiWidget.addEventListener("elevenlabs-convai:conversation-ended", () => {
-    setStatus("ElevenLabs call ended.", "normal");
-  });
-}
-
-async function configureConvaiWidget() {
-  if (!convaiWidget) {
-    setStatus("Agent widget container is missing from the page.", "error");
+function updateElapsedClock() {
+  if (!sessionStartedAt) {
+    timeLabel.textContent = "0.00s";
     return;
   }
-
-  try {
-    const response = await fetch("/api/config");
-    const payload = await response.json();
-    if (!response.ok) {
-      throw new Error(payload.error || "Unable to load agent config.");
-    }
-
-    if (!payload.agentId) {
-      throw new Error("ELEVENLABS_AGENT_ID is missing on the server.");
-    }
-
-    convaiWidget.setAttribute("agent-id", payload.agentId);
-    if (agentMeta) {
-      agentMeta.textContent = payload.branchId
-        ? `Using agent ${payload.agentId} (branch ${payload.branchId})`
-        : `Using agent ${payload.agentId}`;
-    }
-
-    const signedUrlResponse = await fetch("/api/signed-url");
-    if (signedUrlResponse.ok) {
-      const signedPayload = await signedUrlResponse.json();
-      if (signedPayload.signedUrl) {
-        convaiWidget.setAttribute("signed-url", signedPayload.signedUrl);
-      }
-    }
-    widgetConfigured = true;
-  } catch (error) {
-    if (agentMeta) {
-      agentMeta.textContent = `Agent setup warning: ${error.message}`;
-    }
-    setStatus(`Agent setup warning: ${error.message}`, "error");
+  const elapsed = (performance.now() - sessionStartedAt) / 1000;
+  timeLabel.textContent = `${elapsed.toFixed(2)}s`;
+  if (activeConversation) {
+    requestAnimationFrame(updateElapsedClock);
   }
 }
 
-async function waitForWidgetStartMethod(timeoutMs = 5000) {
-  const start = performance.now();
-  while (performance.now() - start < timeoutMs) {
-    if (typeof convaiWidget?.startConversation === "function") {
-      return true;
+function wrapTextLines(text, maxLen = 36) {
+  const words = text.split(/\s+/).filter(Boolean);
+  const lines = [];
+  let line = "";
+  for (const word of words) {
+    const candidate = line ? `${line} ${word}` : word;
+    if (candidate.length <= maxLen) {
+      line = candidate;
+    } else {
+      if (line) lines.push(line);
+      line = word;
     }
-    await new Promise((resolve) => setTimeout(resolve, 150));
   }
-  return false;
+  if (line) lines.push(line);
+  return lines.slice(0, 4);
+}
+
+function normalizeWord(raw) {
+  return raw.toLowerCase().replace(/[^a-z0-9]/g, "");
+}
+
+function extractKeyPhrases(text) {
+  const sentences = text
+    .split(/[.!?]/)
+    .map((part) => part.trim())
+    .filter(Boolean)
+    .slice(0, 4);
+
+  const phrases = [];
+  for (const sentence of sentences) {
+    const words = sentence.split(/\s+/).filter(Boolean);
+    const keyword = words.find((word) => {
+      const normalized = normalizeWord(word);
+      return normalized.length > 4 && !STOP_WORDS.has(normalized);
+    });
+    if (!keyword) continue;
+    phrases.push({
+      title: keyword.replace(/[^a-z0-9]/gi, ""),
+      detail: sentence,
+    });
+  }
+
+  return phrases.slice(0, 3);
+}
+
+function nextNodePosition(index) {
+  const baseX = 56;
+  const baseY = 108;
+  const colWidth = 410;
+  const rowHeight = 120;
+  const col = index % 2;
+  const row = Math.floor(index / 2);
+  return {
+    x: baseX + col * colWidth,
+    y: baseY + row * rowHeight,
+  };
+}
+
+function addConceptNode(concept, sourceText) {
+  const key = concept.title.toLowerCase();
+  if (!key || boardModel.seen.has(key)) return;
+  boardModel.seen.add(key);
+
+  const index = boardModel.nodes.length;
+  const pos = nextNodePosition(index);
+  const node = {
+    id: `node-${index + 1}`,
+    label: concept.title,
+    subtext: wrapTextLines(sourceText, 40)[0] || "",
+    color: PALETTE[index % PALETTE.length],
+    x: pos.x,
+    y: pos.y,
+    w: 360,
+    h: 86,
+    addedAt: performance.now(),
+  };
+  boardModel.nodes.push(node);
+
+  if (index > 0) {
+    const prev = boardModel.nodes[index - 1];
+    boardModel.edges.push({ from: prev.id, to: node.id });
+  }
+}
+
+function appendTranscript(role, text) {
+  if (!transcriptLog) return;
+  const line = document.createElement("div");
+  line.innerHTML = `<strong>${role}:</strong> ${text}`;
+  transcriptLog.appendChild(line);
+  transcriptLog.scrollTop = transcriptLog.scrollHeight;
+}
+
+function absorbAgentText(text) {
+  const clean = String(text || "").trim();
+  if (!clean) return;
+  appendTranscript("Emma", clean);
+  const phrases = extractKeyPhrases(clean);
+  for (const phrase of phrases) {
+    addConceptNode(phrase, phrase.detail);
+  }
+  renderBoard(performance.now());
+}
+
+async function trySemanticEnhance(rawText) {
+  try {
+    const response = await fetch("/api/whiteboard-plan", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        text: rawText,
+      }),
+    });
+    if (!response.ok) return;
+    const payload = await response.json();
+    const concepts = Array.isArray(payload.concepts) ? payload.concepts : [];
+    for (const item of concepts.slice(0, 4)) {
+      if (!item?.label) continue;
+      addConceptNode(
+        { title: String(item.label).slice(0, 30) },
+        String(item.label).slice(0, 120)
+      );
+    }
+
+    const byLabel = new Map(
+      boardModel.nodes.map((node) => [node.label.toLowerCase(), node.id])
+    );
+    const edges = Array.isArray(payload.edges) ? payload.edges : [];
+    for (const edge of edges.slice(0, 8)) {
+      const fromId = byLabel.get(String(edge.from || "").toLowerCase());
+      const toId = byLabel.get(String(edge.to || "").toLowerCase());
+      if (!fromId || !toId || fromId === toId) continue;
+      const exists = boardModel.edges.some(
+        (current) => current.from === fromId && current.to === toId
+      );
+      if (!exists) {
+        boardModel.edges.push({ from: fromId, to: toId });
+      }
+    }
+    renderBoard(performance.now());
+  } catch {
+    // Best-effort enhancement; fallback extraction already handled.
+  }
+}
+
+async function loadConfig() {
+  const response = await fetch("/api/config");
+  const payload = await response.json();
+  if (!response.ok) {
+    throw new Error(payload.error || "Unable to load app configuration.");
+  }
+  return payload;
+}
+
+async function buildSessionOptions(config) {
+  const options = {
+    agentId: config.agentId,
+    onConnect: ({ conversationId }) => {
+      setStatus(`Connected to Emma (${conversationId}). Ask your question now.`, "ok");
+    },
+    onDisconnect: () => {
+      setStatus("Conversation ended.", "normal");
+      activeConversation = null;
+      updateControlsForSession(false);
+      sessionStartedAt = 0;
+      timeLabel.textContent = "0.00s";
+    },
+    onError: (message) => {
+      setStatus(`Conversation error: ${message}`, "error");
+    },
+    onMessage: (message) => {
+      if (!message?.message) return;
+      if (message.role === "agent") {
+        absorbAgentText(message.message);
+        trySemanticEnhance(message.message);
+      } else if (message.role === "user") {
+        appendTranscript("You", message.message);
+      }
+    },
+  };
+
+  try {
+    const signed = await fetch("/api/signed-url");
+    if (signed.ok) {
+      const payload = await signed.json();
+      if (payload.signedUrl) {
+        return {
+          signedUrl: payload.signedUrl,
+          ...options,
+        };
+      }
+    }
+  } catch {
+    // Public agent mode fallback below.
+  }
+  return options;
+}
+
+function resetBoardModel() {
+  boardModel = createEmptyBoardModel();
+  boardModel.title = topicInput.value.trim() || DEFAULT_TOPIC;
+  renderBoard(performance.now());
 }
 
 async function startSession() {
+  if (activeConversation) return;
   startSessionBtn.disabled = true;
-  setStatus("Configuring agent and whiteboard session...", "normal");
+  setStatus("Starting interactive session...", "normal");
 
   try {
-    if (!widgetConfigured) {
-      await configureConvaiWidget();
+    agentConfig = await loadConfig();
+    if (!agentConfig.agentId) {
+      throw new Error("Agent ID is missing in server configuration.");
     }
+    agentMeta.textContent = agentConfig.branchId
+      ? `Using agent ${agentConfig.agentId} (branch ${agentConfig.branchId})`
+      : `Using agent ${agentConfig.agentId}`;
 
-    const started = startBoardFromScript();
-    if (!started) {
-      return;
-    }
+    boardModel.title = topicInput.value.trim() || DEFAULT_TOPIC;
+    renderBoard(performance.now());
 
-    const startMethodReady = await waitForWidgetStartMethod();
-    if (startMethodReady) {
-      await convaiWidget.startConversation();
-      setStatus("Session started: agent call + whiteboard sync are live.", "ok");
-    } else {
-      setStatus(
-        "Whiteboard started. If the call did not auto-start, click Start inside the agent widget once.",
-        "ok"
-      );
+    await navigator.mediaDevices.getUserMedia({ audio: true });
+    const options = await buildSessionOptions(agentConfig);
+    activeConversation = await Conversation.startSession(options);
+    sessionStartedAt = performance.now();
+    updateElapsedClock();
+    updateControlsForSession(true);
+
+    const kickoff = promptInput.value.trim();
+    if (kickoff) {
+      appendTranscript("You", kickoff);
+      activeConversation.sendUserMessage(kickoff);
     }
+    setStatus("Session live. Emma is speaking, and whiteboard is adapting in real time.", "ok");
   } catch (error) {
-    setStatus(`Unable to start full session: ${error.message}`, "error");
+    activeConversation = null;
+    updateControlsForSession(false);
+    setStatus(`Unable to start session: ${error.message}`, "error");
   } finally {
     startSessionBtn.disabled = false;
   }
 }
 
+async function endSession() {
+  if (!activeConversation) return;
+  try {
+    await activeConversation.endSession();
+  } catch (error) {
+    setStatus(`Could not end session cleanly: ${error.message}`, "error");
+  } finally {
+    activeConversation = null;
+    updateControlsForSession(false);
+    sessionStartedAt = 0;
+    timeLabel.textContent = "0.00s";
+  }
+}
+
 function bootstrap() {
-  topicInput.value = defaultTopic;
-  scriptInput.value = DEFAULT_SCRIPT;
-  boardTimeline = timelineFromCues(parseCueScript(DEFAULT_SCRIPT), defaultTopic);
-  renderBoard(0);
-  configureConvaiWidget();
-  wireAgentEvents();
+  topicInput.value = DEFAULT_TOPIC;
+  promptInput.value = DEFAULT_PROMPT;
+  resetBoardModel();
+  updateControlsForSession(false);
+  setStatus("Ready. Click Start session to launch Emma + adaptive whiteboard.", "ok");
   startSessionBtn.addEventListener("click", startSession);
+  endSessionBtn.addEventListener("click", endSession);
+  clearBoardBtn.addEventListener("click", () => {
+    resetBoardModel();
+    setStatus("Whiteboard cleared. It will repopulate from live agent speech.", "normal");
+  });
   window.addEventListener("resize", resizeCanvas);
   resizeCanvas();
 }

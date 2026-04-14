@@ -96,20 +96,20 @@ input:focus {
   font-size: 0.84rem;
 }
 
-.buttons {
+.session-button-row {
+  margin-bottom: 1rem;
   display: flex;
-  gap: 0.6rem;
-  margin-bottom: 0.8rem;
+  gap: 0.55rem;
   flex-wrap: wrap;
 }
 
-.session-button-row {
-  margin-bottom: 1rem;
+.session-button-row .primary {
+  flex: 1 1 210px;
+  padding: 0.75rem 1rem;
 }
 
-.session-button-row .primary {
-  width: 100%;
-  padding: 0.75rem 1rem;
+.session-button-row .secondary {
+  flex: 1 1 140px;
 }
 
 button {
@@ -161,18 +161,31 @@ audio {
   font-size: 0.9rem;
 }
 
-.agent-widget-wrap {
-  min-height: 360px;
-  border: 1px solid #1e293b;
-  border-radius: 10px;
-  background: #0a1222;
-  padding: 0.6rem;
+.transcript-wrap {
+  margin-top: 0.8rem;
 }
 
-.agent-widget-wrap elevenlabs-convai {
-  width: 100%;
-  min-height: 340px;
-  display: block;
+.transcript-wrap h3 {
+  margin: 0 0 0.45rem;
+  font-size: 0.92rem;
+  color: var(--muted);
+}
+
+.transcript-log {
+  margin-top: 0.9rem;
+  border: 1px dashed #2b3c5e;
+  border-radius: 10px;
+  padding: 0.65rem;
+  min-height: 110px;
+  max-height: 180px;
+  overflow: auto;
+  font-size: 0.82rem;
+  color: var(--muted);
+  white-space: pre-wrap;
+}
+
+.transcript-log strong {
+  color: var(--text);
 }
 
 .board-wrap {
