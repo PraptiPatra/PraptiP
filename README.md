@@ -1,30 +1,32 @@
-# ElevenLabs Live Whiteboard (Interactive)
+# ElevenLabs Live Whiteboard (BoardyBoo-style MVP)
 
-This version upgrades your app from static cue playback to a live, adaptive whiteboard:
+This build focuses on a board-first experience inspired by products like BoardyBoo:
 
-- Emma speaks through ElevenLabs conversational session
-- whiteboard updates from Emma's actual responses in real time
-- concept nodes + arrows are drawn as a progressive concept map
-- optional Groq enhancement can improve concept extraction quality
+- conversational voice session with your ElevenLabs agent
+- live whiteboard scenes that update from agent speech
+- progressive hand-drawn style reveal of headers, cards, notes, and links
+- optional Groq enhancement for stronger semantic extraction
 
-## Core behavior
+## What it does now
 
-When you click **Start session**:
+When you click **Start session**, the app:
 
-1. browser microphone permission is requested
-2. app starts a live ElevenLabs conversation with your configured agent
-3. app sends an optional kickoff prompt
-4. each `agent` message updates transcript + whiteboard concept map
-5. concepts are rendered as animated nodes and linked as the discussion evolves
+1. requests microphone permission
+2. starts a live ElevenLabs conversation
+3. sends optional seed context to Emma
+4. listens to Emma's replies in real time
+5. converts each reply into board scene updates:
+   - main headline
+   - concept cards
+   - supporting notes
+   - connecting arrows
 
-## Your configured agent defaults
+## Config defaults
 
 - `ELEVENLABS_CONVAI_AGENT_ID=agent_1301kkkm5pjgffdbe8awxav8nwtp`
 - `ELEVENLABS_CONVAI_BRANCH_ID=agtbrch_8901kkkm5qevfhjtp05ha011tf6j`
 
-You can run without API keys for public-agent mode.
-
-## Setup (local)
+## Local setup
 
 ### 1) Install
 
@@ -38,15 +40,15 @@ npm install
 cp .env.example .env
 ```
 
-### 3) (Optional) add keys
+### 3) Optional API keys
 
 - For private/signed ElevenLabs sessions:
   - `ELEVENLABS_API_KEY=...`
-- For smarter concept extraction via Groq:
+- For better board semantic quality:
   - `GROQ_API_KEY=...`
-  - optionally `GROQ_MODEL=llama-3.3-70b-versatile`
+  - optional: `GROQ_MODEL=llama-3.3-70b-versatile`
 
-If omitted, app uses heuristic concept extraction fallback.
+If Groq is missing/unavailable, app uses deterministic heuristic extraction.
 
 ### 4) Run
 
@@ -60,55 +62,65 @@ Open:
 http://localhost:3000
 ```
 
-## How to use
+## Usage flow
 
-1. Enter board title.
-2. Optionally enter a seed prompt (first user message to Emma).
-3. Click **Start session**.
-4. Speak with Emma.
-5. Watch the whiteboard build a live concept map from her responses.
-6. Click **End session** to stop audio + session.
-7. Click **Clear board** to reset the visual map.
+1. Click **Start session**
+2. Speak with Emma
+3. Watch whiteboard scenes update as Emma responds
+4. Use:
+   - **Focus board** (maximize board area)
+   - **Toggle transcript** (show/hide live log)
+   - **Clear board**
+   - **End session**
 
 ## API endpoints
 
-- `GET /api/health` - health check
-- `GET /api/config` - returns agent/branch + hasApiKey
-- `GET /api/signed-url` - signed URL for authenticated mode (needs ElevenLabs API key)
-- `POST /api/whiteboard-plan` - concept extraction service
-  - uses Groq first, then heuristic fallback
-  - falls back to heuristic extraction otherwise
+- `GET /api/health`
+- `GET /api/config`
+- `GET /api/signed-url`
+- `POST /api/whiteboard-plan` (Groq -> heuristic fallback)
 
 ## Troubleshooting
 
-### Session starts but no speech
+### Session does not start
 
-- confirm browser microphone permission is granted
-- verify your agent is public if you are not using API key
-- open DevTools console and check conversation errors
+- verify mic permission is granted
+- hard refresh page (`Ctrl+F5`)
+- check DevTools console for runtime errors
 
-### Whiteboard not updating
+### Board updates feel generic
 
-- ensure transcript is appearing in live log
-- if transcript is empty, agent messages are not arriving (session issue)
-- if transcript appears but concepts are weak, add Groq key for stronger extraction
+- set `GROQ_API_KEY` in `.env`
+- restart server
+- verify endpoint:
 
-### Groq enhancement not used
+```bash
+curl -sS -X POST http://localhost:3000/api/whiteboard-plan \
+  -H "Content-Type: application/json" \
+  -d '{"text":"Facility 19 uses Jarvis orchestration for portfolio operations."}'
+```
 
-- verify `GROQ_API_KEY` is set in `.env`
-- restart server after env changes
-- `POST /api/whiteboard-plan` should return `"source":"groq"` when active
+Should return `"source":"groq"` when active.
 
-## Notes on "exactly like video-scribe style"
+## External requirements to get *very close* to BoardyBoo quality
 
-This implementation now reacts to real conversation content, but it still uses a structured concept-map drawing style rather than hand-sketch video frames.
-To reach true "hand with marker" animation quality, next step would be:
+To replicate that style more faithfully, you would need:
 
-- vector stroke library / SVG path sequencing
-- layout planner per topic
-- optional image/icon generation pipeline
+1. **Illustration asset pack**
+   - SVG icon sets (business, operations, construction, AI, workforce)
+   - hand-drawn marker/pen style assets
+2. **Stroke/Path animation library**
+   - SVG path reveal support (e.g. GSAP + DrawSVG, Vivus, or custom path animator)
+3. **Scene planner model**
+   - a dedicated LLM prompt or fine-tuned format that outputs scene blocks, positions, and transitions
+4. **Optional media generation backend**
+   - if you want image cards or generated doodles beyond static assets
+5. **Potential licensing**
+   - if using commercial whiteboard illustration packs/fonts
+
+Current version is a strong functional MVP for live speech-to-board mapping, but full BoardyBoo parity needs custom asset design + richer animation pipeline.
 
 ## Scripts
 
-- `npm run dev` - watch mode
-- `npm start` - production run
+- `npm run dev`
+- `npm start`

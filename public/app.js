@@ -5,12 +5,14 @@ const promptInput = document.getElementById("promptInput");
 const startSessionBtn = document.getElementById("startSessionBtn");
 const endSessionBtn = document.getElementById("endSessionBtn");
 const clearBoardBtn = document.getElementById("clearBoardBtn");
+const toggleTranscriptBtn = document.getElementById("toggleTranscriptBtn");
 const statusEl = document.getElementById("status");
 const canvas = document.getElementById("whiteboard");
 const ctx = canvas.getContext("2d");
 const timeLabel = document.getElementById("timeLabel");
 const agentMeta = document.getElementById("agentMeta");
 const transcriptLog = document.getElementById("transcriptLog");
+const transcriptWrap = document.querySelector(".transcript-wrap");
 
 const DEFAULT_TOPIC = "Facility 19 AI Infrastructure";
 const DEFAULT_PROMPT =
@@ -71,6 +73,7 @@ let elapsedRafId = null;
 let agentConfig = null;
 let boardModel = createEmptyBoardModel();
 let boardRafId = null;
+let transcriptVisible = false;
 
 function createEmptyBoardModel() {
   return {
@@ -159,6 +162,20 @@ function renderBoard(nowMs = performance.now()) {
   ctx.restore();
 
   const nodeById = new Map(boardModel.nodes.map((node) => [node.id, node]));
+
+  // light scene guide rails to mimic whiteboard explainer flow
+  ctx.save();
+  ctx.strokeStyle = "#e2e8f0";
+  ctx.lineWidth = 1;
+  ctx.setLineDash([6, 8]);
+  const guideY = [120, 250, 380];
+  for (const y of guideY) {
+    ctx.beginPath();
+    ctx.moveTo(48, y);
+    ctx.lineTo(w - 48, y);
+    ctx.stroke();
+  }
+  ctx.restore();
   for (const edge of boardModel.edges) {
     const source = nodeById.get(edge.from);
     const target = nodeById.get(edge.to);
@@ -269,10 +286,10 @@ function extractKeyPhrases(text) {
 }
 
 function nextNodePosition(index) {
-  const baseX = 56;
-  const baseY = 108;
-  const colWidth = 410;
-  const rowHeight = 120;
+  const baseX = 64;
+  const baseY = 128;
+  const colWidth = 420;
+  const rowHeight = 118;
   const col = index % 2;
   const row = Math.floor(index / 2);
   return {
@@ -313,6 +330,16 @@ function appendTranscript(role, text) {
   line.innerHTML = `<strong>${role}:</strong> ${text}`;
   transcriptLog.appendChild(line);
   transcriptLog.scrollTop = transcriptLog.scrollHeight;
+}
+
+function setTranscriptVisibility(show) {
+  transcriptVisible = show;
+  if (transcriptWrap) {
+    transcriptWrap.classList.toggle("is-hidden", !show);
+  }
+  if (toggleTranscriptBtn) {
+    toggleTranscriptBtn.textContent = show ? "Hide transcript" : "Show transcript";
+  }
 }
 
 function absorbAgentText(text) {
@@ -493,10 +520,16 @@ function bootstrap() {
   setStatus("Ready. Click Start session to launch Emma + adaptive whiteboard.", "ok");
   startSessionBtn.addEventListener("click", startSession);
   endSessionBtn.addEventListener("click", endSession);
+  if (toggleTranscriptBtn) {
+    toggleTranscriptBtn.addEventListener("click", () => {
+      setTranscriptVisibility(!transcriptVisible);
+    });
+  }
   clearBoardBtn.addEventListener("click", () => {
     resetBoardModel();
     setStatus("Whiteboard cleared. It will repopulate from live agent speech.", "normal");
   });
+  setTranscriptVisibility(false);
   window.addEventListener("resize", resizeCanvas);
   resizeCanvas();
 }

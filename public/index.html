@@ -3,21 +3,25 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Voice + Whiteboard Agent</title>
+    <title>Emma Interactive Whiteboard</title>
     <link rel="stylesheet" href="/styles.css" />
   </head>
   <body>
-    <div class="app-shell">
-      <header class="header">
-        <h1>ElevenLabs Voice + Whiteboard Agent</h1>
-        <p class="subtitle">
-          Side-by-side teaching: live ElevenLabs agent + synchronized board drawing.
-        </p>
+    <div class="app-shell boardy-theme">
+      <header class="header compact">
+        <div>
+          <h1>Emma Interactive Whiteboard</h1>
+          <p class="subtitle">Live voice + hand-drawn concept board</p>
+        </div>
+        <div class="session-pill">
+          <span>Session</span>
+          <strong id="timeLabel">0.00s</strong>
+        </div>
       </header>
 
-      <main class="layout">
-        <section class="panel">
-          <h2>Emma voice session</h2>
+      <main class="layout board-layout">
+        <section class="panel control-panel">
+          <h2>Session controls</h2>
           <p class="agent-meta" id="agentMeta">Loading agent configuration...</p>
 
           <div class="session-button-row">
@@ -36,11 +40,7 @@
 
           <div class="control-group">
             <label class="label" for="topicInput">Board title</label>
-            <input
-              id="topicInput"
-              type="text"
-              value="Facility 19 AI infrastructure conversation"
-            />
+            <input id="topicInput" type="text" value="Facility 19 AI infrastructure" />
           </div>
 
           <div class="control-group">
@@ -56,22 +56,29 @@
           </div>
 
           <div class="transcript-wrap">
-            <h3>Live transcript</h3>
+            <h3>Live transcript (interactive feed)</h3>
             <div id="transcriptLog" class="transcript-log"></div>
+          </div>
+
+          <div class="insight-wrap">
+            <h3>Selected node insight</h3>
+            <div id="insightText" class="insight-card">
+              Click any concept node on the whiteboard to inspect its detail.
+            </div>
           </div>
         </section>
 
-        <section class="panel">
-          <h2>Interactive whiteboard</h2>
+        <section class="panel board-panel">
+          <h2>Interactive whiteboard canvas</h2>
           <div class="board-wrap">
             <div class="board-toolbar">
-              <span>Concept map updates from agent speech in real-time</span>
-              <span class="time">
-                Session:
-                <span id="timeLabel">0.00s</span>
-              </span>
+              <span>Board auto-builds from Emma's live responses</span>
+              <span class="time">Click nodes to inspect and connect ideas</span>
             </div>
-            <canvas id="whiteboard" width="1600" height="1000"></canvas>
+            <div class="canvas-stage">
+              <canvas id="whiteboard" width="1600" height="1000"></canvas>
+              <div id="penCursor" class="pen-cursor" aria-hidden="true">✍</div>
+            </div>
             <div class="legend">
               <span><span class="dot draw"></span>Idea branches</span>
               <span><span class="dot text"></span>Core concept nodes</span>

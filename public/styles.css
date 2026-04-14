@@ -35,10 +35,20 @@ body {
   color: var(--muted);
 }
 
+.minimal-note {
+  margin: 0 0 1rem;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
 .layout {
   display: grid;
   grid-template-columns: minmax(320px, 0.9fr) minmax(460px, 1.4fr);
   gap: 1rem;
+}
+
+.board-focused {
+  grid-template-columns: minmax(300px, 0.72fr) minmax(640px, 1.8fr);
 }
 
 .panel {
@@ -172,14 +182,14 @@ audio {
 }
 
 .transcript-log {
-  margin-top: 0.9rem;
+  margin-top: 0.55rem;
   border: 1px dashed #2b3c5e;
   border-radius: 10px;
   padding: 0.65rem;
-  min-height: 110px;
-  max-height: 180px;
+  min-height: 130px;
+  max-height: 230px;
   overflow: auto;
-  font-size: 0.82rem;
+  font-size: 0.84rem;
   color: var(--muted);
   white-space: pre-wrap;
 }
