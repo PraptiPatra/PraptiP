@@ -45,20 +45,14 @@
             <textarea id="scriptInput" rows="12"></textarea>
             <div class="timeline-hint">
               Prefix each cue with <code>[t=seconds]</code>.
-              Start board sync when the agent starts explaining.
+              The whiteboard starts from this timeline when you click Start session.
               Example: <code>[t=4.2] Rate (r) is annual % growth</code>
             </div>
           </div>
 
           <div class="buttons">
-            <button id="playBtn" type="button" class="primary">
-              Start whiteboard sync
-            </button>
-            <button id="pauseBtn" type="button" class="secondary" disabled>
-              Pause board
-            </button>
-            <button id="resetBtn" type="button" class="secondary">
-              Reset board
+            <button id="startSessionBtn" type="button" class="primary">
+              Start session
             </button>
           </div>
 

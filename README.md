@@ -1,65 +1,127 @@
-# ElevenLabs Agent + Whiteboard Agent (MVP)
+# ElevenLabs Agent + Auto-Start Whiteboard Session
 
-This project uses your ElevenLabs conversational agent for speaking and a synchronized whiteboard experience beside it.
+This project gives you the exact experience you requested:
 
-- **Voice side**: embedded ElevenLabs ConvAI widget (`agent-id`)
-- **Whiteboard side**: timed cue animation (`[t=seconds] message`) with pen-style progressive drawing
-- **Sync model**: click **Start board sync** when your agent starts speaking
+- ElevenLabs conversational agent speaks on the left
+- whiteboard auto-draws on the right
+- a single **Start session** button configures both and starts in one flow
 
-## Your configured agent
+---
+
+## 1) What this app does
+
+### Speaking side
+
+- Embeds the ElevenLabs ConvAI widget (`<elevenlabs-convai>`).
+- Loads your configured `agent_id` from backend config.
+- If an API key is present, it also requests a signed URL that includes `branch_id`.
+
+### Whiteboard side
+
+- Reads a timeline script in format:
+
+```txt
+[t=seconds] message
+```
+
+- Converts each cue into animated board events.
+- Draws lines and handwritten-style text progressively to mimic live teaching.
+
+### Session behavior
+
+When you click **Start session**:
+
+1. Agent widget is configured.
+2. Whiteboard timeline is built from cues.
+3. Whiteboard timer starts from 0.
+4. App attempts to trigger widget conversation start programmatically.
+5. If browser/widget policy blocks auto-start, you press **Start call** in the widget (one click fallback).
+
+---
+
+## 2) Preconfigured IDs (your agent)
 
 - Agent ID: `agent_1301kkkm5pjgffdbe8awxav8nwtp`
 - Branch ID: `agtbrch_8901kkkm5qevfhjtp05ha011tf6j`
 
-The widget is loaded with your agent ID from backend config. The branch ID is used for optional signed URL creation when your agent requires authorization.
+These are already set as defaults in server env/config logic.
 
-## What this version includes
+---
 
-- Node.js + Express backend
-- Config endpoint:
-  - `GET /api/config`
-- Optional signed URL helper:
-  - `GET /api/signed-url` (supports `branch_id`)
-- Frontend:
-  - ElevenLabs widget embed using your configured `agent-id`
-  - whiteboard script editor with timeline cues
-  - start/pause/reset board controls
-  - elapsed sync clock
+## 3) Complete setup manual (step-by-step)
 
-## Quick start
+### Prerequisites
 
-### 1) Install
+- Node.js 20+ recommended
+- npm
+- Internet connection (for widget script + ElevenLabs services)
+
+### Step A: install dependencies
 
 ```bash
 npm install
 ```
 
-### 2) Configure environment
+### Step B: configure environment
 
 ```bash
 cp .env.example .env
 ```
 
-Defaults already include your agent/branch IDs. Add `ELEVENLABS_API_KEY` if your widget requires signed URL auth.
+Open `.env` and set:
 
-### 3) Run
+- `ELEVENLABS_CONVAI_AGENT_ID` (already defaulted to your agent)
+- `ELEVENLABS_CONVAI_BRANCH_ID` (already defaulted to your branch)
+- `ELEVENLABS_API_KEY` (optional for public widget, recommended for signed-url/private setups)
+- `PORT` (default 3000)
+
+### Step C: run locally
 
 ```bash
 npm run dev
 ```
 
-Open: `http://localhost:3000`
+Open:
 
-## How to use
+```txt
+http://localhost:3000
+```
 
-1. Open the page.
-2. Start the call in the embedded ElevenLabs widget.
-3. Click **Start board sync** at the same time.
-4. Whiteboard cues animate in parallel with the spoken explanation.
+### Step D: verify backend config
 
-## Cue format
+```bash
+curl -sS http://localhost:3000/api/config
+```
 
-Write lines as:
+Expected shape:
+
+```json
+{
+  "agentId": "agent_...",
+  "branchId": "agtbrch_...",
+  "hasApiKey": true
+}
+```
+
+---
+
+## 4) How to run a teaching session
+
+1. Open the app in browser.
+2. Edit **Whiteboard title**.
+3. Edit **Timed whiteboard script**.
+4. Click **Start session**.
+5. If call does not auto-start, click **Start call** inside widget once.
+6. Whiteboard will continue in sync based on timeline cues.
+7. Use **Pause board** and **Reset board** as needed.
+
+---
+
+## 5) Cue authoring guide
+
+### Format
+
+Each line:
 
 ```txt
 [t=<seconds>] <text to draw>
@@ -68,14 +130,72 @@ Write lines as:
 Example:
 
 ```txt
-[t=0.5] The water cycle has four stages
-[t=2.2] Evaporation
-[t=4.6] Condensation
-[t=7.0] Precipitation
-[t=9.1] Collection
+[t=0.5] Compound Interest
+[t=2.0] Formula: A = P(1 + r/n)^(nt)
+[t=4.0] P = Principal
+[t=6.0] r = Annual interest rate
+[t=8.0] t = Time in years
 ```
 
-## Scripts
+### Best practices for good sync
 
-- `npm run dev` - run in watch mode
+- Keep first cue around `0.3-0.8`.
+- Use increasing times (`0.5`, `2.0`, `4.1`, ...).
+- Keep each cue text concise.
+- Prefer 5-8 cues for a clean board.
+
+---
+
+## 6) API endpoints reference
+
+- `GET /api/health`
+  - basic health check
+- `GET /api/config`
+  - returns agent/branch config used by frontend
+- `GET /api/signed-url`
+  - requests ElevenLabs signed URL with `agent_id` + `branch_id`
+  - requires `ELEVENLABS_API_KEY`
+
+---
+
+## 7) Troubleshooting manual
+
+### Widget appears but call does not start automatically
+
+This can happen due to browser autoplay/user-gesture restrictions.
+
+Fix:
+
+- Click **Start session** first, then **Start call** inside widget.
+- Keep both actions in same browser tab.
+
+### Whiteboard not moving
+
+Check:
+
+- script contains valid cue lines
+- cue format exactly uses `[t=number] text`
+- first cue is not too late
+
+### “Signed URL” / auth errors
+
+Check:
+
+- `ELEVENLABS_API_KEY` is valid
+- agent access settings in ElevenLabs dashboard
+- branch ID belongs to the same agent
+
+### Agent not found / wrong voice assistant
+
+Check:
+
+- `ELEVENLABS_CONVAI_AGENT_ID`
+- response from `/api/config`
+- dashboard agent visibility/public status
+
+---
+
+## 8) Scripts
+
+- `npm run dev` - watch mode
 - `npm start` - run once

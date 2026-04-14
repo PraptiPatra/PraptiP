@@ -1,6 +1,6 @@
 const topicInput = document.getElementById("topicInput");
 const scriptInput = document.getElementById("scriptInput");
-const playBtn = document.getElementById("playBtn");
+const startSessionBtn = document.getElementById("startSessionBtn");
 const pauseBtn = document.getElementById("pauseBtn");
 const resetBtn = document.getElementById("resetBtn");
 const statusEl = document.getElementById("status");
@@ -28,6 +28,7 @@ let animationFrame = null;
 let isTimelineRunning = false;
 let timelineStartPerf = 0;
 let timelineOffsetSeconds = 0;
+let widgetConfigured = false;
 
 function setStatus(message, tone = "normal") {
   statusEl.textContent = message;
@@ -249,15 +250,15 @@ function startFromZero() {
   startTimeline();
 }
 
-function handlePlay() {
+function startBoardFromScript() {
   const cues = parseCueScript(scriptInput.value);
   if (!cues.length) {
     setStatus("Add at least one valid [t=seconds] cue line first.", "error");
-    return;
+    return false;
   }
   boardTimeline = timelineFromCues(cues, topicInput.value);
   startFromZero();
-  setStatus("Whiteboard playback started.", "ok");
+  return true;
 }
 
 function handlePause() {
@@ -314,11 +315,42 @@ async function configureConvaiWidget() {
         convaiWidget.setAttribute("signed-url", signedPayload.signedUrl);
       }
     }
+    widgetConfigured = true;
   } catch (error) {
     if (agentMeta) {
       agentMeta.textContent = `Agent setup warning: ${error.message}`;
     }
     setStatus(`Agent setup warning: ${error.message}`, "error");
+  }
+}
+
+async function startSession() {
+  startSessionBtn.disabled = true;
+  setStatus("Configuring agent and whiteboard session...", "normal");
+
+  try {
+    if (!widgetConfigured) {
+      await configureConvaiWidget();
+    }
+
+    const started = startBoardFromScript();
+    if (!started) {
+      return;
+    }
+
+    if (typeof convaiWidget?.startConversation === "function") {
+      await convaiWidget.startConversation();
+      setStatus("Session started: agent call + whiteboard sync are live.", "ok");
+    } else {
+      setStatus(
+        "Whiteboard started. If the call did not auto-start, click Start inside the agent widget once.",
+        "ok"
+      );
+    }
+  } catch (error) {
+    setStatus(`Unable to start full session: ${error.message}`, "error");
+  } finally {
+    startSessionBtn.disabled = false;
   }
 }
 
@@ -329,7 +361,7 @@ function bootstrap() {
   renderBoard(0);
   configureConvaiWidget();
   wireAgentEvents();
-  playBtn.addEventListener("click", handlePlay);
+  startSessionBtn.addEventListener("click", startSession);
   pauseBtn.addEventListener("click", handlePause);
   resetBtn.addEventListener("click", handleReset);
   window.addEventListener("resize", resizeCanvas);

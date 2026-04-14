@@ -39,7 +39,7 @@ app.get("/api/config", (_, res) => {
   });
 });
 
-app.get("/api/convai-signed-url", async (_, res) => {
+app.get("/api/signed-url", async (_, res) => {
   const apiKey = getApiKey();
   if (!apiKey) {
     return res.status(503).json({
