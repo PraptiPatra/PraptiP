@@ -146,6 +146,12 @@ audio {
   color: var(--ok);
 }
 
+.agent-meta {
+  margin: 0.2rem 0 0.8rem;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
 .agent-widget-wrap {
   min-height: 360px;
   border: 1px solid #1e293b;

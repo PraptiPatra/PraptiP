@@ -11,6 +11,14 @@ const ELEVENLABS_BASE_URL = "https://api.elevenlabs.io/v1";
 const DEFAULT_VOICE_ID = process.env.ELEVENLABS_VOICE_ID || "EXAVITQu4vr4xnSDxMaL";
 const DEFAULT_MODEL_ID =
   process.env.ELEVENLABS_MODEL_ID || "eleven_multilingual_v2";
+const DEFAULT_AGENT_ID =
+  process.env.ELEVENLABS_CONVAI_AGENT_ID ||
+  process.env.ELEVENLABS_AGENT_ID ||
+  "agent_1301kkkm5pjgffdbe8awxav8nwtp";
+const DEFAULT_BRANCH_ID =
+  process.env.ELEVENLABS_CONVAI_BRANCH_ID ||
+  process.env.ELEVENLABS_AGENT_BRANCH_ID ||
+  "agtbrch_8901kkkm5qevfhjtp05ha011tf6j";
 
 app.use(express.json({ limit: "1mb" }));
 app.use(express.static(path.join(__dirname, "public")));
@@ -23,11 +31,57 @@ app.get("/api/health", (_, res) => {
   res.json({ ok: true });
 });
 
-app.get("/api/convai-config", (_, res) => {
+app.get("/api/config", (_, res) => {
   res.json({
-    agentId: process.env.ELEVENLABS_CONVAI_AGENT_ID || "",
-    branchId: process.env.ELEVENLABS_CONVAI_BRANCH_ID || "",
+    agentId: DEFAULT_AGENT_ID,
+    branchId: DEFAULT_BRANCH_ID,
+    hasApiKey: Boolean(getApiKey()),
   });
+});
+
+app.get("/api/convai-signed-url", async (_, res) => {
+  const apiKey = getApiKey();
+  if (!apiKey) {
+    return res.status(503).json({
+      error:
+        "ELEVENLABS_API_KEY is missing. Signed URL requires authenticated API access.",
+    });
+  }
+
+  try {
+    const params = new URLSearchParams({
+      agent_id: DEFAULT_AGENT_ID,
+    });
+    if (DEFAULT_BRANCH_ID) {
+      params.set("branch_id", DEFAULT_BRANCH_ID);
+    }
+
+    const response = await fetch(
+      `${ELEVENLABS_BASE_URL}/convai/conversation/get-signed-url?${params.toString()}`,
+      {
+        method: "GET",
+        headers: {
+          "xi-api-key": apiKey,
+        },
+      }
+    );
+
+    if (!response.ok) {
+      const details = await response.text();
+      return res.status(response.status).json({
+        error: "Unable to create signed URL for ConvAI widget.",
+        details,
+      });
+    }
+
+    const payload = await response.json();
+    return res.json({ signedUrl: payload.signed_url || "" });
+  } catch (error) {
+    return res.status(500).json({
+      error: "Unexpected error while generating signed URL.",
+      details: error.message,
+    });
+  }
 });
 
 app.get("/api/voices", async (_, res) => {

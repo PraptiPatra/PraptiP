@@ -3,13 +3,12 @@ const scriptInput = document.getElementById("scriptInput");
 const playBtn = document.getElementById("playBtn");
 const pauseBtn = document.getElementById("pauseBtn");
 const resetBtn = document.getElementById("resetBtn");
-const syncBtn = document.getElementById("syncBtn");
 const statusEl = document.getElementById("status");
 const canvas = document.getElementById("whiteboard");
 const ctx = canvas.getContext("2d");
 const timeLabel = document.getElementById("timeLabel");
-const convaiAgent = document.getElementById("convaiAgent");
-const elapsedLabel = document.getElementById("elapsedLabel");
+const convaiWidget = document.getElementById("convaiWidget");
+const agentMeta = document.getElementById("agentMeta");
 
 const DEFAULT_SCRIPT = `[t=0.5] Compound Interest
 [t=2.0] Formula: A = P(1 + r/n)^(nt)
@@ -117,9 +116,6 @@ function renderBoard(currentTime) {
   clearCanvas();
   if (timeLabel) {
     timeLabel.textContent = `${currentTime.toFixed(2)}s`;
-  }
-  if (elapsedLabel) {
-    elapsedLabel.textContent = `${currentTime.toFixed(2)}s`;
   }
   boardTimeline.forEach((event) => {
     if (currentTime < event.start) return;
@@ -253,21 +249,6 @@ function startFromZero() {
   startTimeline();
 }
 
-function handleSyncAndStart() {
-  const cues = parseCueScript(scriptInput.value);
-  if (!cues.length) {
-    setStatus("Add at least one valid [t=seconds] cue line first.", "error");
-    return;
-  }
-
-  boardTimeline = timelineFromCues(cues, topicInput.value);
-  startFromZero();
-  setStatus(
-    "Whiteboard sync started. Click Start inside the ElevenLabs widget to speak now.",
-    "ok"
-  );
-}
-
 function handlePlay() {
   const cues = parseCueScript(scriptInput.value);
   if (!cues.length) {
@@ -294,15 +275,51 @@ function handleReset() {
 }
 
 function wireAgentEvents() {
-  if (!convaiAgent) return;
+  if (!convaiWidget) return;
 
-  convaiAgent.addEventListener("elevenlabs-convai:call", () => {
+  convaiWidget.addEventListener("elevenlabs-convai:call", () => {
     setStatus("ElevenLabs call started.", "ok");
   });
 
-  convaiAgent.addEventListener("elevenlabs-convai:conversation-ended", () => {
+  convaiWidget.addEventListener("elevenlabs-convai:conversation-ended", () => {
     setStatus("ElevenLabs call ended.", "normal");
   });
+}
+
+async function configureConvaiWidget() {
+  if (!convaiWidget) return;
+
+  try {
+    const response = await fetch("/api/config");
+    const payload = await response.json();
+    if (!response.ok) {
+      throw new Error(payload.error || "Unable to load agent config.");
+    }
+
+    if (!payload.agentId) {
+      throw new Error("ELEVENLABS_AGENT_ID is missing on the server.");
+    }
+
+    convaiWidget.setAttribute("agent-id", payload.agentId);
+    if (agentMeta) {
+      agentMeta.textContent = payload.branchId
+        ? `Using agent ${payload.agentId} (branch ${payload.branchId})`
+        : `Using agent ${payload.agentId}`;
+    }
+
+    const signedUrlResponse = await fetch("/api/signed-url");
+    if (signedUrlResponse.ok) {
+      const signedPayload = await signedUrlResponse.json();
+      if (signedPayload.signedUrl) {
+        convaiWidget.setAttribute("signed-url", signedPayload.signedUrl);
+      }
+    }
+  } catch (error) {
+    if (agentMeta) {
+      agentMeta.textContent = `Agent setup warning: ${error.message}`;
+    }
+    setStatus(`Agent setup warning: ${error.message}`, "error");
+  }
 }
 
 function bootstrap() {
@@ -310,9 +327,9 @@ function bootstrap() {
   scriptInput.value = DEFAULT_SCRIPT;
   boardTimeline = timelineFromCues(parseCueScript(DEFAULT_SCRIPT), defaultTopic);
   renderBoard(0);
+  configureConvaiWidget();
   wireAgentEvents();
   playBtn.addEventListener("click", handlePlay);
-  syncBtn.addEventListener("click", handleSyncAndStart);
   pauseBtn.addEventListener("click", handlePause);
   resetBtn.addEventListener("click", handleReset);
   window.addEventListener("resize", resizeCanvas);

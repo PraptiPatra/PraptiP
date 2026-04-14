@@ -1,30 +1,30 @@
 # ElevenLabs Agent + Whiteboard Agent (MVP)
 
-This project now uses your exact ElevenLabs conversational agent for speaking, with a synchronized whiteboard experience beside it.
+This project uses your ElevenLabs conversational agent for speaking and a synchronized whiteboard experience beside it.
 
 - **Voice side**: embedded ElevenLabs ConvAI widget (`agent-id`)
 - **Whiteboard side**: timed cue animation (`[t=seconds] message`) with pen-style progressive drawing
-- **Sync model**: you click **Start Whiteboard Sync** when the voice starts speaking
+- **Sync model**: click **Start board sync** when your agent starts speaking
 
 ## Your configured agent
 
 - Agent ID: `agent_1301kkkm5pjgffdbe8awxav8nwtp`
 - Branch ID: `agtbrch_8901kkkm5qevfhjtp05ha011tf6j`
 
-The widget is loaded with your agent ID. Branch ID is shown in UI and used by backend signed URL API support if you later enable authenticated sessions.
+The widget is loaded with your agent ID from backend config. The branch ID is used for optional signed URL creation when your agent requires authorization.
 
 ## What this version includes
 
 - Node.js + Express backend
-- Agent config endpoint:
-  - `GET /api/agent-config`
+- Config endpoint:
+  - `GET /api/config`
 - Optional signed URL helper:
-  - `GET /api/convai/signed-url` (supports `branch_id`)
+  - `GET /api/signed-url` (supports `branch_id`)
 - Frontend:
-  - ElevenLabs widget embed with your `agent-id`
+  - ElevenLabs widget embed using your configured `agent-id`
   - whiteboard script editor with timeline cues
-  - start/pause/reset whiteboard controls
-  - visual clock for sync tracking
+  - start/pause/reset board controls
+  - elapsed sync clock
 
 ## Quick start
 
@@ -40,7 +40,7 @@ npm install
 cp .env.example .env
 ```
 
-Defaults already include your agent/branch IDs. Add `ELEVENLABS_API_KEY` if you want signed URL support and advanced server-side ConvAI flows.
+Defaults already include your agent/branch IDs. Add `ELEVENLABS_API_KEY` if your widget requires signed URL auth.
 
 ### 3) Run
 
@@ -53,9 +53,9 @@ Open: `http://localhost:3000`
 ## How to use
 
 1. Open the page.
-2. Start talking with the embedded ElevenLabs agent (left panel).
-3. At the same moment, click **Start Whiteboard Sync**.
-4. Whiteboard cues animate as if the agent is writing and explaining.
+2. Start the call in the embedded ElevenLabs widget.
+3. Click **Start board sync** at the same time.
+4. Whiteboard cues animate in parallel with the spoken explanation.
 
 ## Cue format
 
