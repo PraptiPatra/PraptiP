@@ -11,48 +11,55 @@
       <header class="header">
         <h1>ElevenLabs Voice + Whiteboard Agent</h1>
         <p class="subtitle">
-          Side-by-side teaching: generated narration + synchronized board drawing.
+          Side-by-side teaching: live ElevenLabs agent + synchronized board drawing.
         </p>
       </header>
 
       <main class="layout">
         <section class="panel">
-          <h2>Voice agent controls</h2>
+          <h2>Speaking agent</h2>
+
+          <p class="agent-meta" id="agentMeta">Loading agent configuration...</p>
+
+          <elevenlabs-convai
+            id="convaiWidget"
+            variant="expanded"
+            action-text="Start tutor call"
+            start-call-text="Start call"
+            end-call-text="End call"
+            listening-text="Listening..."
+            speaking-text="Tutor speaking"
+          ></elevenlabs-convai>
 
           <div class="control-group">
-            <label class="label" for="voiceSelect">Voice</label>
-            <select id="voiceSelect"></select>
-          </div>
-
-          <div class="control-group">
-            <label class="label" for="topicInput">Topic title</label>
+            <label class="label" for="topicInput">Whiteboard title</label>
             <input id="topicInput" type="text" />
           </div>
 
           <div class="control-group">
             <label class="label" for="scriptInput"
-              >Narration script with whiteboard cues</label
+              >Timed whiteboard script</label
             >
             <textarea id="scriptInput" rows="12"></textarea>
             <div class="timeline-hint">
-              Prefix cue lines with <code>[t=seconds]</code> to control drawing timing.
+              Prefix each cue with <code>[t=seconds]</code>.
+              Start board sync when the agent starts explaining.
               Example: <code>[t=4.2] Rate (r) is annual % growth</code>
             </div>
           </div>
 
           <div class="buttons">
             <button id="playBtn" type="button" class="primary">
-              Generate &amp; Play
+              Start board sync
             </button>
             <button id="pauseBtn" type="button" class="secondary" disabled>
-              Pause
+              Pause board
             </button>
             <button id="resetBtn" type="button" class="secondary">
-              Reset
+              Reset board
             </button>
           </div>
 
-          <audio id="audioPlayer" controls></audio>
           <div id="status" class="status">Ready.</div>
         </section>
 
@@ -73,6 +80,11 @@
         </section>
       </main>
     </div>
+    <script
+      src="https://unpkg.com/@elevenlabs/convai-widget-embed"
+      async
+      type="text/javascript"
+    ></script>
     <script defer src="/app.js"></script>
   </body>
 </html>

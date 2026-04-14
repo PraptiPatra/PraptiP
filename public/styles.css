@@ -100,6 +100,7 @@ input:focus {
   display: flex;
   gap: 0.6rem;
   margin-bottom: 0.8rem;
+  flex-wrap: wrap;
 }
 
 button {
@@ -143,6 +144,20 @@ audio {
 
 .status.ok {
   color: var(--ok);
+}
+
+.agent-widget-wrap {
+  min-height: 360px;
+  border: 1px solid #1e293b;
+  border-radius: 10px;
+  background: #0a1222;
+  padding: 0.6rem;
+}
+
+.agent-widget-wrap elevenlabs-convai {
+  width: 100%;
+  min-height: 340px;
+  display: block;
 }
 
 .board-wrap {

@@ -1,14 +1,15 @@
-const voiceSelect = document.getElementById("voiceSelect");
 const topicInput = document.getElementById("topicInput");
 const scriptInput = document.getElementById("scriptInput");
 const playBtn = document.getElementById("playBtn");
 const pauseBtn = document.getElementById("pauseBtn");
 const resetBtn = document.getElementById("resetBtn");
+const syncBtn = document.getElementById("syncBtn");
 const statusEl = document.getElementById("status");
-const audioPlayer = document.getElementById("audioPlayer");
 const canvas = document.getElementById("whiteboard");
 const ctx = canvas.getContext("2d");
 const timeLabel = document.getElementById("timeLabel");
+const convaiAgent = document.getElementById("convaiAgent");
+const elapsedLabel = document.getElementById("elapsedLabel");
 
 const DEFAULT_SCRIPT = `[t=0.5] Compound Interest
 [t=2.0] Formula: A = P(1 + r/n)^(nt)
@@ -25,8 +26,9 @@ const PALETTE = ["#0f172a", "#1d4ed8", "#16a34a", "#dc2626", "#7c3aed", "#0f766e
 let boardTimeline = [];
 
 let animationFrame = null;
-let objectUrl = null;
-let loadedVoices = false;
+let isTimelineRunning = false;
+let timelineStartPerf = 0;
+let timelineOffsetSeconds = 0;
 
 function setStatus(message, tone = "normal") {
   statusEl.textContent = message;
@@ -42,7 +44,7 @@ function resizeCanvas() {
   canvas.width = Math.floor(cssWidth * ratio);
   canvas.height = Math.floor(cssHeight * ratio);
   ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
-  renderBoard(audioPlayer.currentTime || 0);
+  renderBoard(getTimelineSeconds());
 }
 
 function clearCanvas() {
@@ -116,6 +118,9 @@ function renderBoard(currentTime) {
   if (timeLabel) {
     timeLabel.textContent = `${currentTime.toFixed(2)}s`;
   }
+  if (elapsedLabel) {
+    elapsedLabel.textContent = `${currentTime.toFixed(2)}s`;
+  }
   boardTimeline.forEach((event) => {
     if (currentTime < event.start) return;
     const progress = event.duration
@@ -131,8 +136,8 @@ function renderBoard(currentTime) {
 function startRenderLoop() {
   cancelAnimationFrame(animationFrame);
   const tick = () => {
-    renderBoard(audioPlayer.currentTime);
-    if (!audioPlayer.paused && !audioPlayer.ended) {
+    renderBoard(getTimelineSeconds());
+    if (isTimelineRunning) {
       animationFrame = requestAnimationFrame(tick);
     }
   };
@@ -221,111 +226,83 @@ function timelineFromCues(cues, topic) {
   return timeline;
 }
 
-function plainNarrationFromScript(script) {
-  const lines = script
-    .split("\n")
-    .map((line) => line.trim())
-    .filter(Boolean);
-  return lines
-    .map((line) => {
-      const match = line.match(/^\[t=(\d+(?:\.\d+)?)\]\s*(.+)$/i);
-      return match ? match[2] : line;
-    })
-    .join(" ");
+function getTimelineSeconds() {
+  if (!isTimelineRunning) return timelineOffsetSeconds;
+  const elapsed = (performance.now() - timelineStartPerf) / 1000;
+  return timelineOffsetSeconds + elapsed;
 }
 
-async function loadVoices() {
-  try {
-    const response = await fetch("/api/voices");
-    const payload = await response.json();
-    if (!response.ok) {
-      throw new Error(payload.error || "Failed to load voices.");
-    }
-
-    voiceSelect.innerHTML = "";
-    (payload.voices || []).forEach((voice) => {
-      const option = document.createElement("option");
-      option.value = voice.voice_id;
-      option.textContent = voice.name;
-      voiceSelect.appendChild(option);
-    });
-
-    loadedVoices = true;
-    setStatus("Voices loaded from ElevenLabs.", "ok");
-  } catch (error) {
-    setStatus(`Voice loading warning: ${error.message}`, "error");
-  }
-}
-
-function revokeAudioUrl() {
-  if (objectUrl) {
-    URL.revokeObjectURL(objectUrl);
-    objectUrl = null;
-  }
-}
-
-async function generateAudio() {
-  const script = scriptInput.value.trim();
-  if (!script) throw new Error("Narration script cannot be empty.");
-
-  const selectedVoice = voiceSelect.value || undefined;
-  const response = await fetch("/api/lesson-audio", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      text: plainNarrationFromScript(script),
-      voiceId: selectedVoice,
-    }),
-  });
-
-  if (!response.ok) {
-    const payload = await response.json().catch(() => ({}));
-    throw new Error(payload.error || "Audio generation failed.");
-  }
-
-  const blob = await response.blob();
-  revokeAudioUrl();
-  objectUrl = URL.createObjectURL(blob);
-  audioPlayer.src = objectUrl;
-}
-
-async function handlePlay() {
-  playBtn.disabled = true;
+function startTimeline() {
+  if (isTimelineRunning) return;
+  isTimelineRunning = true;
+  timelineStartPerf = performance.now();
   pauseBtn.disabled = false;
-  setStatus("Generating audio with ElevenLabs...", "normal");
+  startRenderLoop();
+}
 
-  try {
-    const cues = parseCueScript(scriptInput.value);
-    if (!cues.length) throw new Error("No valid [t=seconds] cue lines found in script.");
+function pauseTimeline() {
+  if (!isTimelineRunning) return;
+  timelineOffsetSeconds = getTimelineSeconds();
+  isTimelineRunning = false;
+  cancelAnimationFrame(animationFrame);
+}
 
-    boardTimeline = timelineFromCues(cues, topicInput.value);
+function startFromZero() {
+  timelineOffsetSeconds = 0;
+  renderBoard(0);
+  startTimeline();
+}
 
-    await generateAudio();
-    audioPlayer.currentTime = 0;
-    renderBoard(0);
-    await audioPlayer.play();
-    startRenderLoop();
-    setStatus("Playing: voice + whiteboard animation are running together.", "ok");
-  } catch (error) {
-    pauseBtn.disabled = true;
-    setStatus(`Unable to start: ${error.message}`, "error");
-  } finally {
-    playBtn.disabled = false;
+function handleSyncAndStart() {
+  const cues = parseCueScript(scriptInput.value);
+  if (!cues.length) {
+    setStatus("Add at least one valid [t=seconds] cue line first.", "error");
+    return;
   }
+
+  boardTimeline = timelineFromCues(cues, topicInput.value);
+  startFromZero();
+  setStatus(
+    "Whiteboard sync started. Click Start inside the ElevenLabs widget to speak now.",
+    "ok"
+  );
+}
+
+function handlePlay() {
+  const cues = parseCueScript(scriptInput.value);
+  if (!cues.length) {
+    setStatus("Add at least one valid [t=seconds] cue line first.", "error");
+    return;
+  }
+  boardTimeline = timelineFromCues(cues, topicInput.value);
+  startFromZero();
+  setStatus("Whiteboard playback started.", "ok");
 }
 
 function handlePause() {
-  audioPlayer.pause();
-  cancelAnimationFrame(animationFrame);
-  setStatus("Playback paused.", "normal");
+  pauseTimeline();
+  setStatus("Whiteboard paused.", "normal");
 }
 
 function handleReset() {
-  audioPlayer.pause();
-  audioPlayer.currentTime = 0;
+  pauseTimeline();
+  timelineOffsetSeconds = 0;
   cancelAnimationFrame(animationFrame);
   renderBoard(0);
   setStatus("Board reset.", "normal");
+  pauseBtn.disabled = true;
+}
+
+function wireAgentEvents() {
+  if (!convaiAgent) return;
+
+  convaiAgent.addEventListener("elevenlabs-convai:call", () => {
+    setStatus("ElevenLabs call started.", "ok");
+  });
+
+  convaiAgent.addEventListener("elevenlabs-convai:conversation-ended", () => {
+    setStatus("ElevenLabs call ended.", "normal");
+  });
 }
 
 function bootstrap() {
@@ -333,24 +310,11 @@ function bootstrap() {
   scriptInput.value = DEFAULT_SCRIPT;
   boardTimeline = timelineFromCues(parseCueScript(DEFAULT_SCRIPT), defaultTopic);
   renderBoard(0);
-  loadVoices().finally(() => {
-    if (!loadedVoices) {
-      setStatus(
-        "Set ELEVENLABS_API_KEY in .env and refresh to fetch voices.",
-        "error"
-      );
-    }
-  });
-
+  wireAgentEvents();
   playBtn.addEventListener("click", handlePlay);
+  syncBtn.addEventListener("click", handleSyncAndStart);
   pauseBtn.addEventListener("click", handlePause);
   resetBtn.addEventListener("click", handleReset);
-  audioPlayer.addEventListener("seeked", () => renderBoard(audioPlayer.currentTime));
-  audioPlayer.addEventListener("pause", () => cancelAnimationFrame(animationFrame));
-  audioPlayer.addEventListener("ended", () => {
-    cancelAnimationFrame(animationFrame);
-    setStatus("Lesson playback complete.", "ok");
-  });
   window.addEventListener("resize", resizeCanvas);
   resizeCanvas();
 }

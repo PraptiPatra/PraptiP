@@ -23,6 +23,13 @@ app.get("/api/health", (_, res) => {
   res.json({ ok: true });
 });
 
+app.get("/api/convai-config", (_, res) => {
+  res.json({
+    agentId: process.env.ELEVENLABS_CONVAI_AGENT_ID || "",
+    branchId: process.env.ELEVENLABS_CONVAI_BRANCH_ID || "",
+  });
+});
+
 app.get("/api/voices", async (_, res) => {
   const apiKey = getApiKey();
   if (!apiKey) {

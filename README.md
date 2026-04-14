@@ -1,37 +1,30 @@
-# ElevenLabs Voice + Whiteboard Agent (MVP)
+# ElevenLabs Agent + Whiteboard Agent (MVP)
 
-This project is a starter web app for the exact experience you described:
+This project now uses your exact ElevenLabs conversational agent for speaking, with a synchronized whiteboard experience beside it.
 
-- an **ElevenLabs voice agent** speaks your lesson
-- a **whiteboard agent** draws in parallel
-- drawing appears progressively (stroke/text reveal) so it feels like a pen is teaching live
+- **Voice side**: embedded ElevenLabs ConvAI widget (`agent-id`)
+- **Whiteboard side**: timed cue animation (`[t=seconds] message`) with pen-style progressive drawing
+- **Sync model**: you click **Start Whiteboard Sync** when the voice starts speaking
 
-The app is intentionally simple so you can extend it into production later.
+## Your configured agent
 
-## What this MVP includes
+- Agent ID: `agent_1301kkkm5pjgffdbe8awxav8nwtp`
+- Branch ID: `agtbrch_8901kkkm5qevfhjtp05ha011tf6j`
+
+The widget is loaded with your agent ID. Branch ID is shown in UI and used by backend signed URL API support if you later enable authenticated sessions.
+
+## What this version includes
 
 - Node.js + Express backend
-- API proxy to ElevenLabs:
-  - `GET /api/voices`
-  - `POST /api/lesson-audio` (text to speech)
-- Frontend with:
-  - side-by-side voice controls + whiteboard canvas
-  - script editor with timed cue format (`[t=seconds] message`)
-  - synchronized animation loop tied to `audio.currentTime`
-
-## Architecture
-
-1. You write a script like:
-
-```txt
-[t=0.5] Compound Interest
-[t=2.0] Formula: A = P(1 + r/n)^(nt)
-[t=4.0] P = Principal
-```
-
-2. Frontend parses cue lines and builds timeline events.
-3. Backend sends narration text to ElevenLabs and returns MP3.
-4. Browser plays MP3 and continuously renders board state based on current audio time.
+- Agent config endpoint:
+  - `GET /api/agent-config`
+- Optional signed URL helper:
+  - `GET /api/convai/signed-url` (supports `branch_id`)
+- Frontend:
+  - ElevenLabs widget embed with your `agent-id`
+  - whiteboard script editor with timeline cues
+  - start/pause/reset whiteboard controls
+  - visual clock for sync tracking
 
 ## Quick start
 
@@ -47,11 +40,7 @@ npm install
 cp .env.example .env
 ```
 
-Then fill:
-
-- `ELEVENLABS_API_KEY`
-- optionally `ELEVENLABS_VOICE_ID`
-- optionally `ELEVENLABS_MODEL_ID`
+Defaults already include your agent/branch IDs. Add `ELEVENLABS_API_KEY` if you want signed URL support and advanced server-side ConvAI flows.
 
 ### 3) Run
 
@@ -61,12 +50,19 @@ npm run dev
 
 Open: `http://localhost:3000`
 
+## How to use
+
+1. Open the page.
+2. Start talking with the embedded ElevenLabs agent (left panel).
+3. At the same moment, click **Start Whiteboard Sync**.
+4. Whiteboard cues animate as if the agent is writing and explaining.
+
 ## Cue format
 
-Each line should start with:
+Write lines as:
 
 ```txt
-[t=<seconds>] <text to narrate and draw>
+[t=<seconds>] <text to draw>
 ```
 
 Example:
@@ -78,14 +74,6 @@ Example:
 [t=7.0] Precipitation
 [t=9.1] Collection
 ```
-
-## How to evolve this into a production-grade version
-
-- Replace text-line renderer with richer primitives (shapes, arrows, formulas, diagrams).
-- Add an LLM planner that converts topic -> narration + structured whiteboard actions.
-- Use ElevenLabs word timestamps (where available) for tighter sync than manual cues.
-- Persist lessons in a database.
-- Add collaborative mode (teacher can pause/edit board in real time).
 
 ## Scripts
 
