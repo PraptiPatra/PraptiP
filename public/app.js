@@ -1,4 +1,4 @@
-import { Conversation } from "https://unpkg.com/@elevenlabs/client/dist/index.js";
+const { Conversation } = window.ElevenLabsClient || {};
 
 const topicInput = document.getElementById("topicInput");
 const promptInput = document.getElementById("promptInput");
@@ -432,6 +432,12 @@ async function startSession() {
   setStatus("Starting interactive session...", "normal");
 
   try {
+    if (!Conversation || typeof Conversation.startSession !== "function") {
+      throw new Error(
+        "ElevenLabs SDK failed to load. Refresh the page and try again."
+      );
+    }
+
     agentConfig = await loadConfig();
     if (!agentConfig.agentId) {
       throw new Error("Agent ID is missing in server configuration.");

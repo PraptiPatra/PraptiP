@@ -25,6 +25,7 @@ const GROQ_MODEL =
 
 app.use(express.json({ limit: "1mb" }));
 app.use(express.static(path.join(__dirname, "public")));
+app.use("/vendor", express.static(path.join(__dirname, "node_modules")));
 
 function getApiKey() {
   return process.env.ELEVENLABS_API_KEY;
