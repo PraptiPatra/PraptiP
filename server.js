@@ -20,8 +20,8 @@ const DEFAULT_BRANCH_ID =
   process.env.ELEVENLABS_AGENT_BRANCH_ID ||
   "agtbrch_8901kkkm5qevfhjtp05ha011tf6j";
 
-const OPENROUTER_MODEL = process.env.OPENROUTER_MODEL || "openai/gpt-4o-mini";
-const XAI_MODEL = process.env.XAI_MODEL || "grok-4-0709";
+const GROQ_MODEL =
+  process.env.GROQ_MODEL || "llama-3.3-70b-versatile";
 
 app.use(express.json({ limit: "1mb" }));
 app.use(express.static(path.join(__dirname, "public")));
@@ -106,15 +106,15 @@ function tryParseJsonContent(content) {
   }
 }
 
-async function extractWithOpenRouter(prompt, openRouterKey) {
-  const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+async function extractWithGroq(prompt, groqKey) {
+  const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
     method: "POST",
     headers: {
-      Authorization: `Bearer ${openRouterKey}`,
+      Authorization: `Bearer ${groqKey}`,
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      model: OPENROUTER_MODEL,
+      model: GROQ_MODEL,
       temperature: 0.1,
       messages: [
         {
@@ -129,7 +129,7 @@ async function extractWithOpenRouter(prompt, openRouterKey) {
 
   if (!response.ok) {
     const details = await response.text();
-    throw new Error(`OpenRouter request failed: ${details}`);
+    throw new Error(`Groq request failed: ${details}`);
   }
 
   const payload = await response.json();
@@ -138,46 +138,9 @@ async function extractWithOpenRouter(prompt, openRouterKey) {
   const parsed = tryParseJsonContent(content);
   const normalized = normalizePlanResponse(parsed);
   if (!normalized) {
-    throw new Error("OpenRouter returned invalid JSON shape.");
+    throw new Error("Groq returned invalid JSON shape.");
   }
-  return { source: "openrouter", ...normalized };
-}
-
-async function extractWithXai(prompt, xaiKey) {
-  const response = await fetch("https://api.x.ai/v1/chat/completions", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${xaiKey}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      model: XAI_MODEL,
-      temperature: 0.1,
-      messages: [
-        {
-          role: "system",
-          content:
-            "You are a strict JSON extraction engine for whiteboard concept mapping.",
-        },
-        { role: "user", content: prompt },
-      ],
-    }),
-  });
-
-  if (!response.ok) {
-    const details = await response.text();
-    throw new Error(`xAI request failed: ${details}`);
-  }
-
-  const payload = await response.json();
-  const content =
-    payload?.choices?.[0]?.message?.content || payload?.choices?.[0]?.text || "";
-  const parsed = tryParseJsonContent(content);
-  const normalized = normalizePlanResponse(parsed);
-  if (!normalized) {
-    throw new Error("xAI returned invalid JSON shape.");
-  }
-  return { source: "xai", ...normalized };
+  return { source: "groq", ...normalized };
 }
 
 app.get("/api/health", (_, res) => {
@@ -284,21 +247,11 @@ app.post("/api/whiteboard-plan", async (req, res) => {
 
   const prompt = buildExtractionPrompt(text);
   const warnings = [];
-  const openRouterKey = process.env.OPENROUTER_API_KEY;
-  const xaiKey = process.env.XAI_API_KEY;
+  const groqKey = process.env.GROQ_API_KEY;
 
-  if (openRouterKey) {
+  if (groqKey) {
     try {
-      const result = await extractWithOpenRouter(prompt, openRouterKey);
-      return res.json(result);
-    } catch (error) {
-      warnings.push(error.message);
-    }
-  }
-
-  if (xaiKey) {
-    try {
-      const result = await extractWithXai(prompt, xaiKey);
+      const result = await extractWithGroq(prompt, groqKey);
       return res.json(result);
     } catch (error) {
       warnings.push(error.message);
