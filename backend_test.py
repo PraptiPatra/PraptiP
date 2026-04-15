@@ -127,6 +127,16 @@ class WhiteboardAPITester:
                 return False
         return False
 
+    def test_get_config(self):
+        """Test GET /api/config endpoint"""
+        success, response = self.run_test(
+            "Get config",
+            "GET",
+            "config",
+            200
+        )
+        return success and 'elevenlabs_agent_id' in response
+
     def test_clear_session_nodes(self):
         """Test DELETE /api/sessions/{id}/nodes endpoint"""
         if not self.session_id:
@@ -150,6 +160,7 @@ def main():
     # Test sequence
     tests = [
         ("Root endpoint", tester.test_root_endpoint),
+        ("Get config", tester.test_get_config),
         ("Create session", tester.test_create_session),
         ("Get session", tester.test_get_session),
         ("Process transcript", tester.test_process_transcript),

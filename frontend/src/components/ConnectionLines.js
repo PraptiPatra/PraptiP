@@ -8,18 +8,14 @@ export default function ConnectionLines({ connections, nodes }) {
     <svg
       data-testid="connection-lines-svg"
       className="absolute inset-0 w-full h-full pointer-events-none"
-      style={{ zIndex: 5 }}
+      style={{ zIndex: 5, overflow: 'visible' }}
     >
       <defs>
-        <marker
-          id="arrowhead"
-          markerWidth="8"
-          markerHeight="6"
-          refX="8"
-          refY="3"
-          orient="auto"
-        >
-          <polygon points="0 0, 8 3, 0 6" fill="#a1a1aa" />
+        <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="10" refY="3.5" orient="auto">
+          <polygon points="0 0, 10 3.5, 0 7" fill="#a1a1aa" />
+        </marker>
+        <marker id="arrowhead-active" markerWidth="10" markerHeight="7" refX="10" refY="3.5" orient="auto">
+          <polygon points="0 0, 10 3.5, 0 7" fill="#002FA7" />
         </marker>
       </defs>
       {connections.map((conn, idx) => {
@@ -27,19 +23,17 @@ export default function ConnectionLines({ connections, nodes }) {
         const toNode = nodeMap[conn.to_id];
         if (!fromNode || !toNode) return null;
 
-        const x1 = fromNode.x + 140;
+        // Center of each node (approx 260px wide, 80px tall)
+        const x1 = fromNode.x + 130;
         const y1 = fromNode.y + 40;
-        const x2 = toNode.x + 140;
+        const x2 = toNode.x + 130;
         const y2 = toNode.y + 40;
 
-        const midX = (x1 + x2) / 2;
-        const midY = (y1 + y2) / 2;
-
-        // Curved path
+        // Quadratic bezier control point
         const dx = x2 - x1;
         const dy = y2 - y1;
-        const cx = midX - dy * 0.15;
-        const cy = midY + dx * 0.15;
+        const cx = (x1 + x2) / 2 - dy * 0.2;
+        const cy = (y1 + y2) / 2 + dx * 0.2;
 
         return (
           <g key={`conn-${idx}`}>
@@ -47,16 +41,17 @@ export default function ConnectionLines({ connections, nodes }) {
               d={`M ${x1} ${y1} Q ${cx} ${cy} ${x2} ${y2}`}
               fill="none"
               stroke="#d4d4d8"
-              strokeWidth="2"
+              strokeWidth="1.5"
+              strokeDasharray="6 3"
               markerEnd="url(#arrowhead)"
             />
             {conn.label && (
               <text
                 x={cx}
-                y={cy - 8}
+                y={cy - 6}
                 textAnchor="middle"
-                className="text-[10px] fill-zinc-400"
-                style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: '10px' }}
+                fill="#a1a1aa"
+                style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: '9px', fontWeight: 500 }}
               >
                 {conn.label}
               </text>

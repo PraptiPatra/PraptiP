@@ -5,12 +5,13 @@ from motor.motor_asyncio import AsyncIOMotorClient
 import os
 import logging
 import json
+import re
+import httpx
 from pathlib import Path
 from pydantic import BaseModel, Field, ConfigDict
 from typing import List, Optional
 import uuid
 from datetime import datetime, timezone
-from emergentintegrations.llm.chat import LlmChat, UserMessage
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
@@ -25,31 +26,56 @@ api_router = APIRouter(prefix="/api")
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
+OPENROUTER_API_KEY = os.environ.get('OPENROUTER_API_KEY')
+OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions"
+
+# Filler words to strip (Wispr Flow-style)
+FILLER_PATTERN = re.compile(
+    r'\b(um+|uh+|uhh+|hmm+|hm+|ah+|ahh+|er+|err+|like,?\s+(?=like)|'
+    r'you know,?\s*|i mean,?\s*|sort of,?\s*|kind of,?\s*|basically,?\s*|'
+    r'actually,?\s*|literally,?\s*|right\??\s*(?=so)|okay so,?\s*|'
+    r'so yeah,?\s*|yeah so,?\s*)\b',
+    re.IGNORECASE
+)
+
+
+def clean_transcript(text: str) -> str:
+    """Wispr Flow-style: strip fillers, fix spacing, clean up."""
+    cleaned = FILLER_PATTERN.sub(' ', text)
+    cleaned = re.sub(r'\s+', ' ', cleaned).strip()
+    cleaned = re.sub(r'\s+([.,!?])', r'\1', cleaned)
+    return cleaned
+
+
+async def call_openrouter(messages: list, model: str = "openai/gpt-4.1") -> str:
+    """Call OpenRouter API with OpenAI-compatible format."""
+    headers = {
+        "Authorization": f"Bearer {OPENROUTER_API_KEY}",
+        "Content-Type": "application/json",
+        "HTTP-Referer": "https://whiteboard-assistant.app",
+        "X-Title": "Whiteboard Voice Assistant"
+    }
+    payload = {
+        "model": model,
+        "messages": messages,
+        "temperature": 0.3,
+        "max_tokens": 2000,
+    }
+
+    async with httpx.AsyncClient(timeout=30.0) as http_client:
+        response = await http_client.post(OPENROUTER_URL, headers=headers, json=payload)
+        response.raise_for_status()
+        data = response.json()
+        return data['choices'][0]['message']['content']
+
+
+# ── Models ──────────────────────────────────────────────
 
 class TranscriptRequest(BaseModel):
     transcript: str
     session_id: str
     existing_topics: Optional[List[str]] = []
-
-
-class NoteNode(BaseModel):
-    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
-    title: str
-    content: str
-    category: str = "topic"
-    x: float = 0
-    y: float = 0
-
-
-class Connection(BaseModel):
-    from_id: str
-    to_id: str
-    label: str = ""
-
-
-class ProcessedNotes(BaseModel):
-    nodes: List[NoteNode]
-    connections: List[Connection]
+    node_count: Optional[int] = 0
 
 
 class SessionCreate(BaseModel):
@@ -66,52 +92,119 @@ class Session(BaseModel):
     created_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
 
 
-SYSTEM_PROMPT = """You are a visual note-taking assistant. When given a transcript of a conversation, you must extract key topics, concepts, and relationships and return them as structured visual notes.
+class ConfigResponse(BaseModel):
+    elevenlabs_agent_id: str
+
+
+# ── System Prompts ──────────────────────────────────────
+
+CLEAN_PROMPT = """You are a transcript cleaner inspired by Wispr Flow. Given raw speech transcript:
+
+1. Remove ALL filler words: um, uh, hmm, like, you know, I mean, basically, actually, literally, so yeah, right
+2. Fix grammar and punctuation
+3. Merge fragmented thoughts into clear sentences
+4. Keep the speaker's intent and key information intact
+5. Make it concise and professional — as if the person wrote it deliberately
+6. Do NOT add information that wasn't in the original
+7. Do NOT summarize — preserve all distinct points, just clean the language
+
+Return ONLY the cleaned text, nothing else."""
+
+
+NOTES_PROMPT = """You are a visual note architect. Given a cleaned transcript, extract the key concepts and create structured visual notes for a whiteboard canvas.
 
 RULES:
-1. Extract distinct topics/concepts as separate nodes
-2. Each node has a title (short, 2-5 words), content (1-2 sentences explaining the concept), and a category (one of: "topic", "concept", "example", "question", "action")
-3. Identify connections between related nodes with a brief label describing the relationship
-4. Avoid duplicating topics that already exist (check existing_topics list)
-5. Assign x,y coordinates to spread nodes across a canvas (x: 100-900, y: 100-700). Space them out well.
-6. Return ONLY valid JSON matching this exact schema:
+1. Extract 2-6 distinct nodes per transcript segment (don't over-extract)
+2. Each node needs:
+   - "id": unique string (use short meaningful slugs like "neural-nets", "backprop-algo")
+   - "title": concise 2-5 word heading
+   - "content": ONE clear sentence explaining the concept  
+   - "category": one of "topic" (main themes), "concept" (ideas/definitions), "example" (specific instances), "question" (open questions), "action" (next steps/tasks)
+   - "x" and "y": canvas coordinates for visual layout
 
-{
-  "nodes": [
-    {"id": "unique-id", "title": "Node Title", "content": "Brief explanation", "category": "topic", "x": 200, "y": 150}
-  ],
-  "connections": [
-    {"from_id": "id1", "to_id": "id2", "label": "relates to"}
-  ]
-}
+3. POSITIONING RULES (critical for visual flow):
+   - Canvas is 1200x800
+   - Use OFFSET values to avoid overlapping existing nodes
+   - Main topics go center-ish, supporting concepts branch outward
+   - Space nodes at least 250px apart horizontally, 180px vertically
+   - Create visual clusters — related nodes closer together
+   - x range: {x_start} to {x_end}, y range: {y_start} to {y_end}
 
-Return ONLY the JSON, no markdown fences, no explanation."""
+4. Create connections between related nodes:
+   - "from_id", "to_id": reference node IDs
+   - "label": short verb phrase (e.g., "enables", "requires", "leads to")
+   - Only connect nodes that have a genuine relationship
+   - Also connect to EXISTING node IDs if relevant: {existing_ids}
 
+5. Be strategic and concise like Wispr Flow — no fluff, just sharp insights
+
+EXISTING TOPICS (don't duplicate): {existing_topics}
+
+Return ONLY valid JSON:
+{{"nodes": [...], "connections": [...]}}"""
+
+
+# ── Routes ──────────────────────────────────────────────
 
 @api_router.get("/")
 async def root():
     return {"message": "Whiteboard Assistant API"}
 
 
+@api_router.get("/config")
+async def get_config():
+    return {
+        "elevenlabs_agent_id": os.environ.get('ELEVENLABS_AGENT_ID', '')
+    }
+
+
 @api_router.post("/process-transcript")
 async def process_transcript(request: TranscriptRequest):
     try:
-        llm_key = os.environ.get('EMERGENT_LLM_KEY')
-        if not llm_key:
-            return {"error": "LLM key not configured"}
+        if not OPENROUTER_API_KEY:
+            return {"error": "OpenRouter API key not configured"}
 
-        chat = LlmChat(
-            api_key=llm_key,
-            session_id=f"whiteboard-{request.session_id}-{uuid.uuid4()}",
-            system_message=SYSTEM_PROMPT
-        ).with_model("openai", "gpt-4.1")
+        raw_transcript = request.transcript.strip()
+        if not raw_transcript:
+            return {"nodes": [], "connections": []}
 
-        prompt = f"Transcript:\n{request.transcript}\n\nExisting topics (do not duplicate): {json.dumps(request.existing_topics)}"
-        user_msg = UserMessage(text=prompt)
-        response = await chat.send_message(user_msg)
+        # Stage 1: Clean the transcript (Wispr Flow style)
+        logger.info(f"Cleaning transcript ({len(raw_transcript)} chars)")
+        local_cleaned = clean_transcript(raw_transcript)
 
-        # Parse the JSON response
-        response_text = response.strip()
+        cleaned_messages = [
+            {"role": "system", "content": CLEAN_PROMPT},
+            {"role": "user", "content": local_cleaned}
+        ]
+        cleaned_text = await call_openrouter(cleaned_messages)
+        logger.info(f"Cleaned transcript: {cleaned_text[:100]}...")
+
+        # Stage 2: Generate structured notes
+        row = request.node_count // 3
+        x_start = 100 + (request.node_count % 3) * 350
+        y_start = 80 + row * 200
+        x_end = min(x_start + 800, 1100)
+        y_end = min(y_start + 600, 750)
+
+        existing_ids = []
+        if request.existing_topics:
+            existing_ids = [t.lower().replace(' ', '-') for t in request.existing_topics]
+
+        notes_system = NOTES_PROMPT.format(
+            existing_topics=json.dumps(request.existing_topics or []),
+            existing_ids=json.dumps(existing_ids),
+            x_start=x_start, x_end=x_end,
+            y_start=y_start, y_end=y_end
+        )
+
+        notes_messages = [
+            {"role": "system", "content": notes_system},
+            {"role": "user", "content": cleaned_text}
+        ]
+        notes_response = await call_openrouter(notes_messages)
+
+        # Parse JSON
+        response_text = notes_response.strip()
         if response_text.startswith("```"):
             response_text = response_text.split("\n", 1)[1].rsplit("```", 1)[0].strip()
 
@@ -122,7 +215,7 @@ async def process_transcript(request: TranscriptRequest):
             {"id": request.session_id},
             {
                 "$push": {
-                    "transcript_history": request.transcript,
+                    "transcript_history": raw_transcript,
                     "nodes": {"$each": parsed.get("nodes", [])},
                     "connections": {"$each": parsed.get("connections", [])}
                 }
@@ -130,11 +223,18 @@ async def process_transcript(request: TranscriptRequest):
             upsert=True
         )
 
-        return parsed
+        return {
+            "nodes": parsed.get("nodes", []),
+            "connections": parsed.get("connections", []),
+            "cleaned_transcript": cleaned_text
+        }
 
     except json.JSONDecodeError as e:
         logger.error(f"Failed to parse LLM response: {e}")
         return {"nodes": [], "connections": [], "error": "Failed to parse notes"}
+    except httpx.HTTPStatusError as e:
+        logger.error(f"OpenRouter API error: {e.response.status_code} - {e.response.text}")
+        return {"nodes": [], "connections": [], "error": f"API error: {e.response.status_code}"}
     except Exception as e:
         logger.error(f"Error processing transcript: {e}")
         return {"nodes": [], "connections": [], "error": str(e)}
