@@ -1,4 +1,5 @@
 from fastapi import FastAPI, APIRouter
+from fastapi.responses import Response
 from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
@@ -6,12 +7,14 @@ import os
 import logging
 import json
 import re
+import base64
 import httpx
 from pathlib import Path
 from pydantic import BaseModel, Field, ConfigDict
 from typing import List, Optional
 import uuid
 from datetime import datetime, timezone
+from elevenlabs.client import ElevenLabs
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
@@ -28,6 +31,15 @@ logger = logging.getLogger(__name__)
 
 OPENROUTER_API_KEY = os.environ.get('OPENROUTER_API_KEY')
 OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions"
+
+# ElevenLabs TTS config (Emma's voice)
+ELEVENLABS_API_KEY = os.environ.get('ELEVENLABS_API_KEY')
+ELEVENLABS_VOICE_ID = "yj30vwTGJxSHezdAGsv9"  # Emma
+ELEVENLABS_MODEL = "eleven_flash_v2"
+
+eleven_client = None
+if ELEVENLABS_API_KEY:
+    eleven_client = ElevenLabs(api_key=ELEVENLABS_API_KEY)
 
 # Filler words to strip (Wispr Flow-style)
 FILLER_PATTERN = re.compile(
@@ -76,6 +88,10 @@ class TranscriptRequest(BaseModel):
     session_id: str
     existing_topics: Optional[List[str]] = []
     node_count: Optional[int] = 0
+
+
+class TTSRequest(BaseModel):
+    text: str
 
 
 class SessionCreate(BaseModel):
@@ -301,6 +317,39 @@ async def clear_session_nodes(session_id: str):
         {"$set": {"nodes": [], "connections": [], "transcript_history": []}}
     )
     return {"status": "cleared"}
+
+
+@api_router.post("/tts")
+async def text_to_speech(request: TTSRequest):
+    """Generate speech audio using ElevenLabs TTS (Emma's voice)."""
+    if not eleven_client:
+        return {"error": "ElevenLabs API key not configured"}
+
+    try:
+        text = request.text.strip()
+        if not text:
+            return {"error": "No text provided"}
+
+        audio_generator = eleven_client.text_to_speech.convert(
+            text=text,
+            voice_id=ELEVENLABS_VOICE_ID,
+            model_id=ELEVENLABS_MODEL,
+        )
+
+        audio_data = b""
+        for chunk in audio_generator:
+            audio_data += chunk
+
+        audio_b64 = base64.b64encode(audio_data).decode()
+
+        return {
+            "audio": audio_b64,
+            "format": "audio/mpeg",
+        }
+
+    except Exception as e:
+        logger.error(f"TTS error: {e}")
+        return {"error": str(e)}
 
 
 app.include_router(api_router)

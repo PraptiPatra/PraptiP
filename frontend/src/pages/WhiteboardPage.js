@@ -3,7 +3,7 @@ import axios from 'axios';
 import Sidebar from '../components/Sidebar';
 import Canvas from '../components/Canvas';
 import { useSpeechRecognition } from '../hooks/useSpeechRecognition';
-import { useSpeechSynthesis } from '../hooks/useSpeechSynthesis';
+import { useElevenLabsTTS } from '../hooks/useSpeechSynthesis';
 import { Toaster, toast } from 'sonner';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
@@ -40,7 +40,7 @@ export default function WhiteboardPage() {
     speak,
     stop: stopSpeaking,
     toggleVoice,
-  } = useSpeechSynthesis();
+  } = useElevenLabsTTS();
 
   // Create session + auto-connect on mount
   useEffect(() => {

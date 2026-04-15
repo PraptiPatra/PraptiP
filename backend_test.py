@@ -160,6 +160,42 @@ class WhiteboardAPITester:
         )
         return success and response.get('status') == 'cleared'
 
+    def test_tts_endpoint(self):
+        """Test POST /api/tts endpoint (ElevenLabs TTS)"""
+        test_text = "Hello, this is a test of the text to speech functionality using Emma's voice."
+        
+        success, response = self.run_test(
+            "Text-to-Speech (TTS)",
+            "POST",
+            "tts",
+            200,
+            data={"text": test_text},
+            timeout=30  # TTS may take some time
+        )
+        
+        if success:
+            # Check if response has expected structure
+            has_audio = 'audio' in response and isinstance(response['audio'], str)
+            has_format = 'format' in response and response['format'] == 'audio/mpeg'
+            
+            if has_audio and has_format:
+                audio_length = len(response['audio'])
+                print(f"   Generated audio: {audio_length} chars of base64 data")
+                print(f"   Format: {response['format']}")
+                # Verify it's valid base64 (should be substantial length for audio)
+                if audio_length > 1000:  # Reasonable audio should be > 1KB base64
+                    return True
+                else:
+                    print(f"❌ Audio data too short ({audio_length} chars), may be invalid")
+                    return False
+            else:
+                print(f"❌ Invalid TTS response structure:")
+                if not has_audio: print("   - audio field missing or invalid")
+                if not has_format: print("   - format field missing or not 'audio/mpeg'")
+                print(f"   Response: {response}")
+                return False
+        return False
+
 def main():
     print("🚀 Starting Whiteboard Assistant API Tests")
     print("=" * 50)
@@ -173,6 +209,7 @@ def main():
         ("Create session", tester.test_create_session),
         ("Get session", tester.test_get_session),
         ("Process transcript", tester.test_process_transcript),
+        ("Text-to-Speech (TTS)", tester.test_tts_endpoint),
         ("Clear session nodes", tester.test_clear_session_nodes),
     ]
     

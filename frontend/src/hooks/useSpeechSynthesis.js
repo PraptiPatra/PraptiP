@@ -1,71 +1,81 @@
-import { useState, useRef, useCallback, useEffect } from 'react';
+import { useState, useRef, useCallback } from 'react';
+import axios from 'axios';
 
-export function useSpeechSynthesis() {
+const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
+const API = `${BACKEND_URL}/api`;
+
+export function useElevenLabsTTS() {
   const [isSpeaking, setIsSpeaking] = useState(false);
-  const [isSupported, setIsSupported] = useState(false);
   const [voiceEnabled, setVoiceEnabled] = useState(true);
-  const utteranceRef = useRef(null);
+  const audioRef = useRef(null);
+  const queueRef = useRef([]);
+  const playingRef = useRef(false);
 
-  useEffect(() => {
-    setIsSupported('speechSynthesis' in window);
+  const playNext = useCallback(() => {
+    if (queueRef.current.length === 0) {
+      playingRef.current = false;
+      setIsSpeaking(false);
+      return;
+    }
+
+    playingRef.current = true;
+    setIsSpeaking(true);
+    const audioB64 = queueRef.current.shift();
+
+    const audio = new Audio(`data:audio/mpeg;base64,${audioB64}`);
+    audioRef.current = audio;
+
+    audio.onended = () => {
+      playNext();
+    };
+    audio.onerror = () => {
+      playNext();
+    };
+
+    audio.play().catch(() => {
+      playNext();
+    });
   }, []);
 
-  const speak = useCallback((text) => {
-    if (!isSupported || !voiceEnabled || !text) return;
+  const speak = useCallback(async (text) => {
+    if (!voiceEnabled || !text) return;
 
-    // Cancel any ongoing speech
-    window.speechSynthesis.cancel();
-
-    const utterance = new SpeechSynthesisUtterance(text);
-    utterance.rate = 1.05;
-    utterance.pitch = 1.0;
-    utterance.volume = 0.9;
-
-    // Try to pick a good English voice
-    const voices = window.speechSynthesis.getVoices();
-    const preferred = voices.find(v =>
-      v.name.includes('Google') && v.lang.startsWith('en')
-    ) || voices.find(v =>
-      v.lang.startsWith('en') && v.name.includes('Female')
-    ) || voices.find(v =>
-      v.lang.startsWith('en-US')
-    ) || voices.find(v =>
-      v.lang.startsWith('en')
-    );
-
-    if (preferred) {
-      utterance.voice = preferred;
+    try {
+      const res = await axios.post(`${API}/tts`, { text });
+      if (res.data.audio) {
+        queueRef.current.push(res.data.audio);
+        if (!playingRef.current) {
+          playNext();
+        }
+      }
+    } catch (err) {
+      console.error('TTS error:', err);
     }
-
-    utterance.onstart = () => setIsSpeaking(true);
-    utterance.onend = () => setIsSpeaking(false);
-    utterance.onerror = () => setIsSpeaking(false);
-
-    utteranceRef.current = utterance;
-    window.speechSynthesis.speak(utterance);
-  }, [isSupported, voiceEnabled]);
+  }, [voiceEnabled, playNext]);
 
   const stop = useCallback(() => {
-    if (isSupported) {
-      window.speechSynthesis.cancel();
-      setIsSpeaking(false);
+    queueRef.current = [];
+    playingRef.current = false;
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current.currentTime = 0;
+      audioRef.current = null;
     }
-  }, [isSupported]);
+    setIsSpeaking(false);
+  }, []);
 
   const toggleVoice = useCallback(() => {
     setVoiceEnabled(prev => {
       if (prev) {
-        // Turning off — stop any current speech
-        window.speechSynthesis.cancel();
-        setIsSpeaking(false);
+        // Turning off - stop playback
+        stop();
       }
       return !prev;
     });
-  }, []);
+  }, [stop]);
 
   return {
     isSpeaking,
-    isSupported,
     voiceEnabled,
     speak,
     stop,
