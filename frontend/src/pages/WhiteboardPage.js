@@ -3,6 +3,7 @@ import axios from 'axios';
 import Sidebar from '../components/Sidebar';
 import Canvas from '../components/Canvas';
 import { useSpeechRecognition } from '../hooks/useSpeechRecognition';
+import { useSpeechSynthesis } from '../hooks/useSpeechSynthesis';
 import { Toaster, toast } from 'sonner';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
@@ -19,6 +20,7 @@ export default function WhiteboardPage() {
   const [transcriptHistory, setTranscriptHistory] = useState([]);
   const [cleanedSegments, setCleanedSegments] = useState([]);
   const [manualInput, setManualInput] = useState('');
+  const [aiResponses, setAiResponses] = useState([]);
   const widgetScriptLoaded = useRef(false);
   const processingLock = useRef(false);
 
@@ -31,6 +33,14 @@ export default function WhiteboardPage() {
     stopListening,
     clearTranscript,
   } = useSpeechRecognition();
+
+  const {
+    isSpeaking,
+    voiceEnabled,
+    speak,
+    stop: stopSpeaking,
+    toggleVoice,
+  } = useSpeechSynthesis();
 
   // Create session + auto-connect on mount
   useEffect(() => {
@@ -123,6 +133,12 @@ export default function WhiteboardPage() {
         setCleanedSegments(prev => [...prev, res.data.cleaned_transcript]);
       }
 
+      // AI speaks back about what was drawn
+      if (res.data.voice_response) {
+        setAiResponses(prev => [...prev, res.data.voice_response]);
+        speak(res.data.voice_response);
+      }
+
       setTranscriptHistory(prev => [...prev, text.trim()]);
     } catch (err) {
       console.error('Error processing:', err);
@@ -178,11 +194,13 @@ export default function WhiteboardPage() {
     setConnections([]);
     setTranscriptHistory([]);
     setCleanedSegments([]);
+    setAiResponses([]);
+    stopSpeaking();
     if (sessionId) {
       try { await axios.delete(`${API}/sessions/${sessionId}/nodes`); } catch (e) {}
     }
     toast.success('Canvas cleared');
-  }, [sessionId]);
+  }, [sessionId, stopSpeaking]);
 
   return (
     <div data-testid="whiteboard-page" className="h-screen flex overflow-hidden">
@@ -201,11 +219,16 @@ export default function WhiteboardPage() {
         onClearTranscript={clearTranscript}
         transcriptHistory={transcriptHistory}
         cleanedSegments={cleanedSegments}
+        aiResponses={aiResponses}
         speechSupported={isSupported}
         manualInput={manualInput}
         setManualInput={setManualInput}
         onManualSubmit={handleManualSubmit}
         nodeCount={nodes.length}
+        isSpeaking={isSpeaking}
+        voiceEnabled={voiceEnabled}
+        onToggleVoice={toggleVoice}
+        onStopSpeaking={stopSpeaking}
       />
       <Canvas
         nodes={nodes}

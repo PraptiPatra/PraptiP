@@ -118,12 +118,21 @@ class WhiteboardAPITester:
             # Check if response has expected structure
             has_nodes = 'nodes' in response and isinstance(response['nodes'], list)
             has_connections = 'connections' in response and isinstance(response['connections'], list)
+            has_cleaned_transcript = 'cleaned_transcript' in response and isinstance(response['cleaned_transcript'], str)
+            has_voice_response = 'voice_response' in response and isinstance(response['voice_response'], str)
             
-            if has_nodes and has_connections:
+            if has_nodes and has_connections and has_cleaned_transcript and has_voice_response:
                 print(f"   Generated {len(response['nodes'])} nodes and {len(response['connections'])} connections")
+                print(f"   Cleaned transcript: {response['cleaned_transcript'][:100]}...")
+                print(f"   Voice response: {response['voice_response'][:100]}...")
                 return True
             else:
-                print(f"❌ Invalid response structure: {response}")
+                print(f"❌ Invalid response structure. Missing fields:")
+                if not has_nodes: print("   - nodes field missing or invalid")
+                if not has_connections: print("   - connections field missing or invalid") 
+                if not has_cleaned_transcript: print("   - cleaned_transcript field missing or invalid")
+                if not has_voice_response: print("   - voice_response field missing or invalid")
+                print(f"   Response: {response}")
                 return False
         return False
 

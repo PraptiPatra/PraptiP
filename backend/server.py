@@ -144,6 +144,25 @@ Return ONLY valid JSON:
 {{"nodes": [...], "connections": [...]}}"""
 
 
+VOICE_RESPONSE_PROMPT = """You are a friendly, concise whiteboard assistant. The user just spoke about something and you've organized their thoughts into visual notes on a whiteboard.
+
+Your job: respond conversationally in 1-3 SHORT sentences. Acknowledge what they said, briefly summarize what you captured on the board, and optionally ask a follow-up question to keep the conversation going.
+
+RULES:
+- Be warm but concise — like a smart study buddy
+- Reference the specific topics/concepts you captured
+- Don't be generic or robotic
+- Keep it under 40 words
+- Don't start with "I've" or "I have" — vary your openings
+- Sound natural, like you're in a real conversation
+
+The notes you just created on the board:
+{notes_summary}
+
+The cleaned version of what they said:
+{cleaned_text}"""
+
+
 # ── Routes ──────────────────────────────────────────────
 
 @api_router.get("/")
@@ -210,6 +229,23 @@ async def process_transcript(request: TranscriptRequest):
 
         parsed = json.loads(response_text)
 
+        # Stage 3: Generate voice response (AI speaks back)
+        notes_summary = ", ".join([n.get("title", "") for n in parsed.get("nodes", [])])
+        voice_prompt = VOICE_RESPONSE_PROMPT.format(
+            notes_summary=notes_summary,
+            cleaned_text=cleaned_text
+        )
+        try:
+            voice_messages = [
+                {"role": "system", "content": voice_prompt},
+                {"role": "user", "content": "Respond to what I just said."}
+            ]
+            voice_response = await call_openrouter(voice_messages)
+            voice_response = voice_response.strip().strip('"')
+        except Exception as ve:
+            logger.warning(f"Voice response generation failed: {ve}")
+            voice_response = ""
+
         # Store in session
         await db.sessions.update_one(
             {"id": request.session_id},
@@ -226,7 +262,8 @@ async def process_transcript(request: TranscriptRequest):
         return {
             "nodes": parsed.get("nodes", []),
             "connections": parsed.get("connections", []),
-            "cleaned_transcript": cleaned_text
+            "cleaned_transcript": cleaned_text,
+            "voice_response": voice_response
         }
 
     except json.JSONDecodeError as e:

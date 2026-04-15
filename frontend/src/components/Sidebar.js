@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Mic, MicOff, Settings, Send, Loader2, Trash2, Volume2, Type, ChevronDown, ChevronUp, Sparkles } from 'lucide-react';
+import { Mic, MicOff, Settings, Send, Loader2, Trash2, Volume2, VolumeX, Type, Sparkles, AudioLines, Square } from 'lucide-react';
 import { ScrollArea } from '../components/ui/scroll-area';
 import { Separator } from '../components/ui/separator';
 import {
@@ -23,11 +23,16 @@ export default function Sidebar({
   onClearTranscript,
   transcriptHistory,
   cleanedSegments,
+  aiResponses,
   speechSupported,
   manualInput,
   setManualInput,
   onManualSubmit,
   nodeCount,
+  isSpeaking,
+  voiceEnabled,
+  onToggleVoice,
+  onStopSpeaking,
 }) {
   const [localAgentId, setLocalAgentId] = useState(agentId || '');
   const [showConfig, setShowConfig] = useState(!agentId);
@@ -135,6 +140,60 @@ export default function Sidebar({
             </div>
           </div>
         )}
+
+        {/* ── Voice Feedback Toggle ── */}
+        <div data-testid="voice-feedback-panel" className="px-5 py-2.5 border-b border-zinc-200 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            {isSpeaking ? (
+              <AudioLines size={14} className="text-[#002FA7] animate-pulse" />
+            ) : (
+              <Volume2 size={14} className="text-zinc-400" />
+            )}
+            <span className="text-[10px] font-mono font-medium uppercase tracking-[0.2em] text-zinc-500">
+              AI Voice Feedback
+            </span>
+            {isSpeaking && (
+              <span className="text-[9px] font-mono text-[#002FA7] flex items-center gap-1">
+                <span className="w-1.5 h-1.5 rounded-full bg-[#002FA7] animate-pulse" />
+                Speaking
+              </span>
+            )}
+          </div>
+          <div className="flex items-center gap-1">
+            {isSpeaking && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    data-testid="stop-speaking-btn"
+                    onClick={onStopSpeaking}
+                    className="p-1 text-[#FF3B30] hover:bg-red-50 transition-colors"
+                  >
+                    <Square size={12} />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent side="bottom" className="text-xs">Stop Speaking</TooltipContent>
+              </Tooltip>
+            )}
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  data-testid="toggle-voice-feedback-btn"
+                  onClick={onToggleVoice}
+                  className={`p-1.5 rounded-none transition-colors ${
+                    voiceEnabled
+                      ? 'text-[#002FA7] bg-blue-50 hover:bg-blue-100'
+                      : 'text-zinc-400 hover:text-zinc-600'
+                  }`}
+                >
+                  {voiceEnabled ? <Volume2 size={14} /> : <VolumeX size={14} />}
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom" className="text-xs">
+                {voiceEnabled ? 'Mute AI Voice' : 'Enable AI Voice'}
+              </TooltipContent>
+            </Tooltip>
+          </div>
+        </div>
 
         {/* ── Input Mode Tabs ── */}
         <div className="px-5 pt-3 pb-2 border-b border-zinc-200">
@@ -252,11 +311,11 @@ export default function Sidebar({
           </div>
         )}
 
-        {/* ── Transcript / Cleaned History ── */}
+        {/* ── Conversation / Transcript ── */}
         <div data-testid="transcript-panel" className="flex-1 flex flex-col min-h-0">
           <div className="flex items-center justify-between px-5 pt-3 pb-1.5">
             <span className="text-[10px] font-mono font-medium uppercase tracking-[0.2em] text-zinc-500">
-              {cleanedSegments.length > 0 ? 'Processed Notes' : 'Live Transcript'}
+              Conversation
             </span>
             {(transcript || cleanedSegments.length > 0) && (
               <button
@@ -269,21 +328,36 @@ export default function Sidebar({
             )}
           </div>
           <ScrollArea className="flex-1 px-5 pb-3">
-            <div className="space-y-2.5 custom-scrollbar">
-              {/* Cleaned segments (processed) */}
+            <div className="space-y-3 custom-scrollbar">
+              {/* Interleaved conversation: user segments + AI responses */}
               {cleanedSegments.map((segment, idx) => (
-                <div key={`cleaned-${idx}`} className="relative">
-                  <div className="text-[10px] font-mono text-[#002FA7] uppercase tracking-wider mb-0.5 flex items-center gap-1">
-                    <Sparkles size={9} />
-                    Processed #{idx + 1}
+                <div key={`conv-${idx}`} className="space-y-2">
+                  {/* User's processed message */}
+                  <div className="relative">
+                    <div className="text-[9px] font-mono text-zinc-400 uppercase tracking-wider mb-0.5 flex items-center gap-1">
+                      <Mic size={8} />
+                      You
+                    </div>
+                    <div className="text-xs font-mono text-zinc-700 pl-2.5 border-l-2 border-zinc-300 leading-relaxed">
+                      {segment}
+                    </div>
                   </div>
-                  <div className="text-xs font-mono text-zinc-700 pl-2.5 border-l-2 border-[#002FA7] leading-relaxed">
-                    {segment}
-                  </div>
+                  {/* AI response */}
+                  {aiResponses[idx] && (
+                    <div className="relative">
+                      <div className="text-[9px] font-mono text-[#002FA7] uppercase tracking-wider mb-0.5 flex items-center gap-1">
+                        <AudioLines size={8} />
+                        AI Assistant
+                      </div>
+                      <div data-testid={`ai-response-${idx}`} className="text-xs text-zinc-800 pl-2.5 border-l-2 border-[#002FA7] leading-relaxed bg-blue-50/30 py-1.5 pr-2" style={{ fontFamily: "'IBM Plex Sans', sans-serif" }}>
+                        {aiResponses[idx]}
+                      </div>
+                    </div>
+                  )}
                 </div>
               ))}
 
-              {/* Raw history (unprocessed display) */}
+              {/* Raw history (before processing) */}
               {cleanedSegments.length === 0 && transcriptHistory.map((entry, idx) => (
                 <div key={`history-${idx}`} className="text-xs font-mono text-zinc-400 pl-2.5 border-l-2 border-zinc-200 leading-relaxed">
                   {entry}
@@ -292,12 +366,18 @@ export default function Sidebar({
 
               {/* Current live transcript */}
               {transcript && (
-                <div data-testid="current-transcript" className="text-xs font-mono text-zinc-800 pl-2.5 border-l-2 border-zinc-400 leading-relaxed">
-                  {transcript}
+                <div data-testid="current-transcript">
+                  <div className="text-[9px] font-mono text-zinc-400 uppercase tracking-wider mb-0.5 flex items-center gap-1">
+                    <Mic size={8} />
+                    Speaking...
+                  </div>
+                  <div className="text-xs font-mono text-zinc-800 pl-2.5 border-l-2 border-zinc-400 leading-relaxed">
+                    {transcript}
+                  </div>
                 </div>
               )}
 
-              {/* Interim (being spoken) */}
+              {/* Interim */}
               {interimTranscript && (
                 <div className="text-xs font-mono text-zinc-400 italic pl-2.5 border-l-2 border-zinc-200 leading-relaxed animate-pulse">
                   {interimTranscript}
@@ -308,8 +388,8 @@ export default function Sidebar({
               {!transcript && !interimTranscript && cleanedSegments.length === 0 && transcriptHistory.length === 0 && (
                 <div className="text-[11px] font-mono text-zinc-300 text-center py-10 leading-relaxed">
                   {activeTab === 'voice'
-                    ? 'Start listening to capture speech.\nNotes auto-generate on pause.'
-                    : 'Type or paste text, then hit Process.\nCtrl+Enter for quick send.'}
+                    ? 'Start listening to capture speech.\nThe AI will draw notes & speak back.'
+                    : 'Type or paste text, then hit Process.\nThe AI will respond with voice.'}
                 </div>
               )}
               <div ref={transcriptEndRef} />
