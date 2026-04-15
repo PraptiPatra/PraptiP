@@ -1,15 +1,17 @@
-from fastapi import FastAPI, APIRouter
+from fastapi import FastAPI, APIRouter, HTTPException
 from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
 import os
 import logging
-from pathlib import Path
-from pydantic import BaseModel, Field, ConfigDict
-from typing import List
+import httpx
+import json
 import uuid
+import base64
+from pathlib import Path
+from pydantic import BaseModel, Field
+from typing import List, Optional, Dict, Any
 from datetime import datetime, timezone
-
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
@@ -19,54 +21,228 @@ mongo_url = os.environ['MONGO_URL']
 client = AsyncIOMotorClient(mongo_url)
 db = client[os.environ['DB_NAME']]
 
-# Create the main app without a prefix
-app = FastAPI()
+# API Keys
+OPENROUTER_API_KEY = os.environ.get('OPENROUTER_API_KEY')
+ELEVENLABS_API_KEY = os.environ.get('ELEVENLABS_API_KEY')
 
-# Create a router with the /api prefix
+app = FastAPI()
 api_router = APIRouter(prefix="/api")
 
+# Configure logging
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+logger = logging.getLogger(__name__)
 
-# Define Models
-class StatusCheck(BaseModel):
-    model_config = ConfigDict(extra="ignore")  # Ignore MongoDB's _id field
-    
-    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
-    client_name: str
-    timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+# In-memory session store
+sessions: Dict[str, Dict] = {}
 
-class StatusCheckCreate(BaseModel):
-    client_name: str
+SYSTEM_PROMPT = """You are a premium AI consultant that helps users think through any problem visually on a whiteboard. You speak naturally and conversationally while selectively drawing the most important parts of the discussion on a whiteboard.
 
-# Add your routes to the router instead of directly to app
+CRITICAL: You must ALWAYS respond with a valid JSON object in this exact format:
+{
+  "message": "Your conversational response text here",
+  "whiteboard_update": null or a whiteboard command object
+}
+
+WHITEBOARD COMMAND FORMAT:
+When you want to draw something on the whiteboard, set "whiteboard_update" to:
+{
+  "scene_type": "one of the types below",
+  "data": { scene-specific data }
+}
+
+SCENE TYPES:
+
+1. "title" - Opening title for the conversation topic
+   data: { "title": "Main Title", "subtitle": "Brief context line" }
+
+2. "problem_frame" - Frame the core problem or question
+   data: { "question": "The key question we're solving", "context": "Additional framing" }
+
+3. "comparison" - Compare 2-3 options side by side
+   data: { "title": "What we're comparing", "options": [{"name": "Option A", "points": ["detail 1", "detail 2"]}, {"name": "Option B", "points": ["detail 1", "detail 2"]}] }
+
+4. "pros_cons" - List pros and cons of something
+   data: { "title": "Topic", "pros": ["advantage 1", "advantage 2"], "cons": ["disadvantage 1", "disadvantage 2"] }
+
+5. "checklist" - Requirements or criteria checklist
+   data: { "title": "Criteria", "items": [{"text": "Requirement 1", "checked": true}, {"text": "Requirement 2", "checked": false}] }
+
+6. "scorecard" - Rate options on criteria (scores 1-10)
+   data: { "title": "Evaluation", "criteria": ["Speed", "Cost", "Quality"], "options": [{"name": "Option A", "scores": [8, 6, 9]}, {"name": "Option B", "scores": [6, 9, 7]}] }
+
+7. "recommendation" - Final recommendation with reasoning
+   data: { "title": "Our Recommendation", "recommendation": "Go with Option A", "key_reasons": ["reason 1", "reason 2", "reason 3"] }
+
+8. "notes" - Key facts, preferences, or observations
+   data: { "title": "Key Points", "notes": ["important fact 1", "important fact 2"] }
+
+9. "process" - Step-by-step process or workflow
+   data: { "title": "Process", "steps": [{"label": "Step 1", "description": "What to do"}, {"label": "Step 2", "description": "Next action"}] }
+
+BEHAVIORAL RULES:
+- On the FIRST user message, ALWAYS create a "title" scene to establish the topic visually
+- Only draw when there's genuinely meaningful visual content to add
+- Don't draw for simple acknowledgments or short clarifying questions with no new info
+- Build the board progressively - each new scene adds insight
+- Keep all text CONCISE - this is a whiteboard, not a document (max 6-8 words per bullet)
+- Use comparison/scorecard when the user is choosing between options
+- Use recommendation when you have enough info to conclude
+- Ask thoughtful questions to understand the user's actual needs
+- Be warm, intelligent, and consultative in your responses
+- You can handle ANY topic - business, personal decisions, technical choices, planning, etc.
+- Prefer drawing after gathering meaningful info, not after every single message
+- When you do draw, make it count - the visual should provide clarity the text alone doesn't
+"""
+
+
+class ChatRequest(BaseModel):
+    message: str
+    session_id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+
+
+class ChatResponse(BaseModel):
+    message: str
+    whiteboard_update: Optional[Dict[str, Any]] = None
+    session_id: str
+
+
+class TTSRequest(BaseModel):
+    text: str
+    voice_id: str = "21m00Tcm4TlvDq8ikWAM"
+
+
+class SessionResetRequest(BaseModel):
+    session_id: str
+
+
+def get_session(session_id: str) -> Dict:
+    if session_id not in sessions:
+        sessions[session_id] = {
+            "messages": [],
+            "scenes": [],
+            "created_at": datetime.now(timezone.utc).isoformat()
+        }
+    return sessions[session_id]
+
+
 @api_router.get("/")
 async def root():
-    return {"message": "Hello World"}
+    return {"message": "Whiteboard Agent API"}
 
-@api_router.post("/status", response_model=StatusCheck)
-async def create_status_check(input: StatusCheckCreate):
-    status_dict = input.model_dump()
-    status_obj = StatusCheck(**status_dict)
-    
-    # Convert to dict and serialize datetime to ISO string for MongoDB
-    doc = status_obj.model_dump()
-    doc['timestamp'] = doc['timestamp'].isoformat()
-    
-    _ = await db.status_checks.insert_one(doc)
-    return status_obj
 
-@api_router.get("/status", response_model=List[StatusCheck])
-async def get_status_checks():
-    # Exclude MongoDB's _id field from the query results
-    status_checks = await db.status_checks.find({}, {"_id": 0}).to_list(1000)
-    
-    # Convert ISO string timestamps back to datetime objects
-    for check in status_checks:
-        if isinstance(check['timestamp'], str):
-            check['timestamp'] = datetime.fromisoformat(check['timestamp'])
-    
-    return status_checks
+@api_router.get("/health")
+async def health():
+    return {"status": "ok"}
 
-# Include the router in the main app
+
+@api_router.post("/chat", response_model=ChatResponse)
+async def chat(request: ChatRequest):
+    session = get_session(request.session_id)
+
+    session["messages"].append({
+        "role": "user",
+        "content": request.message
+    })
+
+    llm_messages = [{"role": "system", "content": SYSTEM_PROMPT}] + session["messages"]
+
+    try:
+        async with httpx.AsyncClient(timeout=60.0) as http_client:
+            response = await http_client.post(
+                "https://openrouter.ai/api/v1/chat/completions",
+                headers={
+                    "Authorization": f"Bearer {OPENROUTER_API_KEY}",
+                    "Content-Type": "application/json",
+                    "HTTP-Referer": "https://whiteboard-agent.app",
+                },
+                json={
+                    "model": "openai/gpt-4o-mini",
+                    "messages": llm_messages,
+                    "response_format": {"type": "json_object"},
+                    "temperature": 0.7,
+                    "max_tokens": 1500,
+                }
+            )
+            response.raise_for_status()
+            result = response.json()
+
+        ai_content = result["choices"][0]["message"]["content"]
+        parsed = json.loads(ai_content)
+
+        ai_message = parsed.get("message", "I'm thinking about this...")
+        whiteboard_update = parsed.get("whiteboard_update")
+
+        session["messages"].append({
+            "role": "assistant",
+            "content": ai_content
+        })
+
+        if whiteboard_update:
+            session["scenes"].append(whiteboard_update)
+
+        return ChatResponse(
+            message=ai_message,
+            whiteboard_update=whiteboard_update,
+            session_id=request.session_id
+        )
+
+    except httpx.HTTPStatusError as e:
+        logger.error(f"OpenRouter API error: {e.response.text}")
+        raise HTTPException(status_code=502, detail="AI service temporarily unavailable")
+    except json.JSONDecodeError:
+        logger.warning(f"AI returned non-JSON response: {ai_content[:200]}")
+        session["messages"].append({
+            "role": "assistant",
+            "content": json.dumps({"message": ai_content, "whiteboard_update": None})
+        })
+        return ChatResponse(
+            message=ai_content if isinstance(ai_content, str) else "Let me think about that...",
+            whiteboard_update=None,
+            session_id=request.session_id
+        )
+    except Exception as e:
+        logger.error(f"Chat error: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@api_router.post("/tts")
+async def text_to_speech(request: TTSRequest):
+    if not ELEVENLABS_API_KEY:
+        raise HTTPException(status_code=500, detail="TTS not configured")
+
+    try:
+        async with httpx.AsyncClient(timeout=30.0) as http_client:
+            response = await http_client.post(
+                f"https://api.elevenlabs.io/v1/text-to-speech/{request.voice_id}",
+                headers={
+                    "xi-api-key": ELEVENLABS_API_KEY,
+                    "Content-Type": "application/json",
+                    "Accept": "audio/mpeg",
+                },
+                json={
+                    "text": request.text,
+                    "model_id": "eleven_monolingual_v1",
+                    "voice_settings": {
+                        "stability": 0.5,
+                        "similarity_boost": 0.75
+                    }
+                }
+            )
+            response.raise_for_status()
+            audio_base64 = base64.b64encode(response.content).decode()
+            return {"audio": audio_base64}
+    except Exception as e:
+        logger.error(f"TTS error: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@api_router.post("/session/reset")
+async def reset_session(request: SessionResetRequest):
+    if request.session_id in sessions:
+        del sessions[request.session_id]
+    return {"status": "reset", "session_id": request.session_id}
+
+
 app.include_router(api_router)
 
 app.add_middleware(
@@ -77,12 +253,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Configure logging
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-)
-logger = logging.getLogger(__name__)
 
 @app.on_event("shutdown")
 async def shutdown_db_client():
