@@ -34,7 +34,7 @@ OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions"
 
 # ElevenLabs TTS config (Emma's voice)
 ELEVENLABS_API_KEY = os.environ.get('ELEVENLABS_API_KEY')
-ELEVENLABS_VOICE_ID = "yj30vwTGJxSHezdAGsv9"  # Emma
+ELEVENLABS_VOICE_ID = "cjVigY5qzO86Huf0OWal"  # Emma - Whiteboard
 ELEVENLABS_MODEL = "eleven_flash_v2"
 
 eleven_client = None
