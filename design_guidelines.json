@@ -1,0 +1,108 @@
+{
+  "theme": "light",
+  "archetype": "Archetype 4 (Swiss & High-Contrast) with Archetype 1 (Organic & Earthy) for tactile feel",
+  "rationale": "For a 'smart human consultant' AI whiteboard, the interface must feel authoritative and clean (Swiss), while the canvas itself must feel tactile, organic, and approachable (Earthy/Hand-drawn). We use a premium Light Theme to replicate high-quality paper/whiteboards, avoiding clinical grays or childish primary colors.",
+  "colors": {
+    "background": {
+      "main": "#FAFAFA",
+      "description": "Soft off-white for the main canvas, reducing eye strain compared to pure white."
+    },
+    "surface": {
+      "glass": "bg-white/75 backdrop-blur-2xl backdrop-saturate-150",
+      "solid": "#FFFFFF",
+      "border": "border-black/5"
+    },
+    "text": {
+      "primary": "#18181B",
+      "secondary": "#52525B",
+      "muted": "#A1A1AA"
+    },
+    "ink": {
+      "charcoal": "#111111",
+      "blue_marker": "#0055FF",
+      "red_marker": "#E63946"
+    },
+    "accent": {
+      "primary": "#0055FF",
+      "hover": "#0044CC"
+    }
+  },
+  "typography": {
+    "fonts": {
+      "heading": "Outfit, sans-serif",
+      "body": "Manrope, sans-serif",
+      "handwriting": "Caveat, cursive"
+    },
+    "hierarchy": {
+      "h1": "font-heading text-4xl sm:text-5xl tracking-tight text-primary font-medium",
+      "h2": "font-heading text-2xl sm:text-3xl tracking-tight text-primary font-medium",
+      "h3": "font-heading text-xl sm:text-2xl tracking-tight text-primary",
+      "body_lg": "font-body text-lg leading-relaxed text-secondary",
+      "body_base": "font-body text-base leading-relaxed text-secondary",
+      "handdrawn_text": "font-handwriting text-2xl sm:text-3xl text-charcoal leading-none"
+    },
+    "rules": [
+      "No generic 'Inter' or 'Roboto' fonts.",
+      "Use Caveat ONLY for AI-generated whiteboard drawings and annotations.",
+      "Use Outfit for all UI panel headings and Manrope for UI text/transcripts."
+    ]
+  },
+  "layout_and_spacing": {
+    "strategy": "Floating Panels over Infinite Canvas",
+    "canvas": {
+      "classes": "fixed inset-0 z-0 bg-[#FAFAFA]",
+      "pattern": "radial-gradient(#D1D5DB 1.5px, transparent 1.5px) 0 0 / 28px 28px"
+    },
+    "sidebar": {
+      "position": "absolute top-4 right-4 bottom-4 w-80 md:w-96 z-10",
+      "surface": "bg-white/75 backdrop-blur-2xl backdrop-saturate-150 rounded-2xl border border-white/40 shadow-[0_8px_32px_rgba(0,0,0,0.08)] flex flex-col",
+      "padding": "p-6"
+    },
+    "session_controls": {
+      "position": "absolute bottom-6 left-1/2 -translate-x-1/2 z-10",
+      "surface": "bg-white/90 backdrop-blur-md rounded-full border border-black/5 shadow-lg",
+      "padding": "px-6 py-3 flex items-center gap-4"
+    }
+  },
+  "components": {
+    "buttons": {
+      "primary": "rounded-full bg-[#0055FF] text-white hover:bg-[#0044CC] hover:text-white transition-all duration-200 px-6 py-2.5 font-medium shadow-sm hover:shadow-md",
+      "secondary": "rounded-full bg-white text-[#18181B] border border-black/10 hover:border-black/20 hover:bg-neutral-50 transition-all duration-200 px-6 py-2.5 font-medium shadow-sm",
+      "icon": "p-2.5 rounded-full hover:bg-black/5 text-[#52525B] hover:text-[#18181B] transition-colors"
+    },
+    "inputs": {
+      "text": "bg-black/5 border-transparent focus:bg-white focus:border-[#0055FF] focus:ring-2 focus:ring-[#0055FF]/20 rounded-xl px-4 py-3 w-full text-base transition-all"
+    },
+    "cards": {
+      "chat_bubble_ai": "bg-white border border-black/5 rounded-2xl rounded-tr-sm p-4 shadow-sm",
+      "chat_bubble_user": "bg-black/5 rounded-2xl rounded-tl-sm p-4"
+    }
+  },
+  "motion": {
+    "canvas_drawing": {
+      "library": "framer-motion",
+      "initial": "{ pathLength: 0, opacity: 0 }",
+      "animate": "{ pathLength: 1, opacity: 1 }",
+      "transition": "{ duration: 1.5, ease: 'easeInOut' }"
+    },
+    "sidebar_entrance": {
+      "initial": "{ x: 100, opacity: 0 }",
+      "animate": "{ x: 0, opacity: 1 }",
+      "transition": "{ type: 'spring', stiffness: 260, damping: 20 }"
+    }
+  },
+  "media_and_icons": {
+    "icon_library": "@phosphor-icons/react",
+    "icon_instructions": "Use 'Duotone' weight for major sidebar actions. Use 'Regular' weight for dense controls. Execute `yarn add @phosphor-icons/react`.",
+    "image_urls": {
+      "empty_state_texture": "https://images.unsplash.com/photo-1737276817365-56a2e5012219?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjAzMzl8MHwxfHNlYXJjaHwyfHxjbGVhbiUyMHdoaXRlJTIwcGFwZXIlMjB0ZXh0dXJlJTIwYmFja2dyb3VuZHxlbnwwfHx8fDE3NzYyNzY4NzF8MA&ixlib=rb-4.1.0&q=85",
+      "description": "Fallback texture if CSS pattern is not desired. Use CSS radial-gradient grid as primary preference."
+    }
+  },
+  "technical_instructions": {
+    "file_extension": "Use .js and .jsx for all React components. Do NOT use .tsx or .ts files.",
+    "testing": "All interactive elements, buttons, inputs, canvas nodes, and conversational panels MUST include a `data-testid` attribute (e.g., `data-testid=\"toggle-voice-btn\"`).",
+    "shadcn_customization": "Heavily customize Shadcn components. Remove the default standard border radius. Use full rounded pills (`rounded-full`) for standard buttons and large rounded corners (`rounded-2xl`) for panels.",
+    "whiteboard_implementation": "Use inline SVGs driven by React state or framer-motion for drawing strokes. Do not attempt to use HTML <canvas> unless strictly necessary for performance, as SVG paths are easier to animate with 'pathLength'."
+  }
+}
