@@ -51,3 +51,13 @@ Build a whiteboard assistant that integrates with an ElevenLabs conversational A
 - Custom node color themes
 - Node grouping / clustering
 - Minimap for large canvases
+
+## Update: April 15, 2026 - Voice Feedback Feature
+- Added Stage 3 to processing pipeline: AI generates conversational voice response
+- Backend returns `voice_response` field alongside notes
+- Frontend speaks AI response via browser SpeechSynthesis API
+- Added voice feedback toggle (mute/unmute AI voice)
+- Added stop speaking button during playback
+- Conversation panel now shows interleaved user messages + AI responses
+- AI responses are contextual — reference specific topics captured on whiteboard
+- Voice response prompt designed for natural, concise study-buddy style responses
