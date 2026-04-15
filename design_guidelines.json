@@ -1,0 +1,101 @@
+{
+  "theme": "Light",
+  "archetype": "4 (Swiss & High-Contrast)",
+  "vibe": "Objective, rigid, functional. The 'Control Room' for thought.",
+  "typography": {
+    "headings": {
+      "family": "IBM Plex Sans, sans-serif",
+      "weights": ["400", "600", "700"],
+      "usage": "Headers, Node Titles, Section Labels. Tightly tracked."
+    },
+    "body": {
+      "family": "IBM Plex Mono, monospace",
+      "weights": ["400", "500"],
+      "usage": "Transcripts, Data points, Agent IDs, Meta information."
+    },
+    "scale": {
+      "h1": "text-2xl sm:text-3xl font-bold tracking-tight",
+      "h2": "text-xl font-semibold tracking-tight",
+      "node_title": "text-lg font-semibold tracking-tight leading-none",
+      "body": "text-sm leading-relaxed",
+      "label": "text-xs font-medium uppercase tracking-[0.2em]"
+    }
+  },
+  "colors": {
+    "background": {
+      "canvas": "bg-zinc-50",
+      "sidebar": "bg-white",
+      "node": "bg-white"
+    },
+    "text": {
+      "primary": "text-zinc-900",
+      "secondary": "text-zinc-500",
+      "disabled": "text-zinc-300"
+    },
+    "border": {
+      "default": "border-zinc-200",
+      "focus": "border-blue-600",
+      "node": "border-zinc-900"
+    },
+    "accents": {
+      "primary": "bg-[#002FA7] text-white hover:bg-[#002FA7]/90",
+      "recording": "text-[#FF3B30] bg-[#FF3B30]/10",
+      "recording_pulse": "ring-[#FF3B30]/30"
+    }
+  },
+  "layout": {
+    "structure": "Split View: Fixed Left Sidebar (w-80 or w-96) + Main Canvas Area (flex-1).",
+    "sidebar": "Flex column, full height, border-r border-zinc-200, strict padding (p-6).",
+    "canvas": "Relative, overflow-hidden, full height. Background pattern: CSS dotted or grid lines using radial-gradient or repeating-linear-gradient to look like a whiteboard."
+  },
+  "components": {
+    "agent_config_panel": {
+      "style": "Compact. Input field for Agent ID and Connect button.",
+      "input": "border border-zinc-200 rounded-none px-3 py-2 text-sm font-mono focus:border-[#002FA7] focus:ring-1 focus:ring-[#002FA7] outline-none transition-colors",
+      "button": "bg-zinc-900 text-white rounded-none px-4 py-2 text-sm font-semibold hover:bg-zinc-800 transition-colors"
+    },
+    "voice_widget": {
+      "container": "Flex items-center justify-between p-4 border border-zinc-200 bg-zinc-50 rounded-none mt-6",
+      "mic_button_idle": "p-3 rounded-full bg-zinc-200 text-zinc-600 hover:bg-zinc-300 transition-colors",
+      "mic_button_active": "p-3 rounded-full bg-[#FF3B30] text-white animate-pulse shadow-[0_0_15px_rgba(255,59,48,0.5)]"
+    },
+    "transcript_display": {
+      "container": "Flex-1 overflow-y-auto mt-6 border-t border-zinc-200 pt-4 space-y-4",
+      "user_bubble": "text-sm font-mono text-zinc-500 pl-2 border-l-2 border-zinc-300",
+      "agent_bubble": "text-sm font-mono text-zinc-900 pl-2 border-l-2 border-[#002FA7]"
+    },
+    "node_card": {
+      "style": "The 'Tactile' Neo-Brutalist variant. Absolute positioned on canvas.",
+      "container": "min-w-[200px] bg-white border-2 border-zinc-900 p-4 shadow-[4px_4px_0_0_#18181b] cursor-grab active:cursor-grabbing active:shadow-[2px_2px_0_0_#18181b] active:translate-x-[2px] active:translate-y-[2px] transition-all duration-75",
+      "header": "flex justify-between items-center mb-2 border-b-2 border-zinc-100 pb-2",
+      "content": "text-sm text-zinc-700"
+    },
+    "connection_lines": {
+      "style": "SVG lines connecting nodes. Stroke color: zinc-300 (or zinc-900 for active), stroke-width: 2. Arrowhead at the end."
+    }
+  },
+  "motion": {
+    "hover": "Crisp, fast transitions (duration-150).",
+    "nodes": "Use framer-motion for smooth entry (scale-up + fade-in) when a new node is generated.",
+    "drag": "Nodes must be draggable. The shadow compresses on drag (simulating pressing down)."
+  },
+  "assets": {
+    "icons": {
+      "library": "lucide-react",
+      "usage": "Mic, MicOff, Settings, Plus, Link, Play, Square (Stop)."
+    }
+  },
+  "instructions_to_main_agent": [
+    "Install `framer-motion` for draggable node cards and smooth canvas interactions.",
+    "For the infinite canvas, you can implement a simple zoom/pan container using `react-zoom-pan-pinch` or a custom implementation with mouse events.",
+    "If building the nodes from scratch, use an array of node objects with x/y coordinates and update them via framer-motion's `onDrag` callback.",
+    "Draw connection lines using an absolute SVG layer that spans the entire canvas, mapping lines between node coordinates.",
+    "The ElevenLabs agent integration can be mocked using standard Web Audio/Speech APIs or simple simulated timeouts if the actual SDK is not provided, but ensure the UI reacts to 'speaking' and 'listening' states.",
+    "Strictly adhere to the typography: IBM Plex Sans for headings/cards and IBM Plex Mono for transcript/inputs. It creates the required 'Swiss/Technical' aesthetic.",
+    "Do NOT use generic rounded borders (rounded-md/lg). Stick to sharp edges (rounded-none) or maximum 2px (rounded-sm) for a brutalist/structural feel."
+  ],
+  "accessibility": {
+    "contrast": "Ensure transcript text meets 4.5:1 ratio against background.",
+    "focus": "All actionable items must have a clear 2px focus ring (focus:ring-2 focus:ring-[#002FA7] focus:outline-none)."
+  }
+}
