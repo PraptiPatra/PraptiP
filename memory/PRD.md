@@ -29,12 +29,14 @@ Build a premium web app called "Whiteboard Agent" - a voice-first conversational
 - Full backend with /api/chat, /api/tts, /api/session/reset endpoints
 - Complete frontend with WhiteboardCanvas, SceneRenderer (9 types), ConversationPanel, SessionControls
 - AnimatedElements (AnimatedPath, AnimatedText, AnimatedGroup) with framer-motion
+- **PenMarker cursor** that follows animated SVG paths using requestAnimationFrame + getPointAtLength (synced with framer-motion easeInOut)
+- **16 hand-drawn SVG illustrations** (laptop, car, phone, lightbulb, chart, money, rocket, house, person, target, globe, book, heart, coffee, gear, star) rendered contextually based on AI decisions
 - Rough path generators for hand-drawn aesthetic
 - Web Speech API for voice input
 - ElevenLabs TTS for voice output
-- OpenRouter GPT-4o-mini for AI reasoning + whiteboard commands
+- OpenRouter GPT-4o-mini for AI reasoning + whiteboard commands + illustration selection
 - SVG export functionality
-- All tests passing (100% backend, frontend, integration)
+- All tests passing (100% backend, 95% frontend)
 
 ## Prioritized Backlog
 ### P0 (Critical)
