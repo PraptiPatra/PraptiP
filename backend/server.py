@@ -40,7 +40,8 @@ SYSTEM_PROMPT = """You are a premium AI consultant that helps users think throug
 CRITICAL: You must ALWAYS respond with a valid JSON object in this exact format:
 {
   "message": "Your conversational response text here",
-  "whiteboard_update": null or a whiteboard command object
+  "whiteboard_update": null or a whiteboard command object,
+  "suggestions": ["Follow-up question 1?", "Follow-up question 2?"]
 }
 
 WHITEBOARD COMMAND FORMAT:
@@ -137,7 +138,8 @@ BEHAVIORAL RULES:
 - Only draw when there's genuinely meaningful visual content to add
 - Don't draw for simple acknowledgments or short clarifying questions with no new info
 - Build the board progressively - each new scene adds insight
-- Keep all text CONCISE - this is a whiteboard, not a document (max 6-8 words per bullet)
+- CRITICAL: Keep whiteboard text EXTREMELY short — max 3-5 words per bullet point. Think telegraph style. Example: "Great keyboard" not "ThinkPad has a really great keyboard quality"
+- Your message MUST narrate and describe what you're drawing on the whiteboard. If you draw a comparison, explain the comparison in your message. Read aloud the key points. The user should hear everything that appears on the board.
 - Use comparison/scorecard when the user is choosing between options
 - Use recommendation when you have enough info to conclude
 - Ask thoughtful questions to understand the user's actual needs
@@ -145,6 +147,12 @@ BEHAVIORAL RULES:
 - You can handle ANY topic - business, personal decisions, technical choices, planning, etc.
 - Prefer drawing after gathering meaningful info, not after every single message
 - When you do draw, make it count - the visual should provide clarity the text alone doesn't
+
+SUGGESTIONS:
+- ALWAYS include a "suggestions" array with 2-3 short follow-up questions or next steps the user might want to explore
+- These appear as clickable buttons in the UI so keep them concise (under 10 words each)
+- Make them genuinely useful next steps, not generic
+- Examples: "Compare battery life?", "What's the price difference?", "Show me a scorecard"
 """
 
 
@@ -157,6 +165,7 @@ class ChatResponse(BaseModel):
     message: str
     whiteboard_update: Optional[Dict[str, Any]] = None
     session_id: str
+    suggestions: Optional[List[str]] = None
 
 
 class TTSRequest(BaseModel):
@@ -224,6 +233,7 @@ async def chat(request: ChatRequest):
 
         ai_message = parsed.get("message", "I'm thinking about this...")
         whiteboard_update = parsed.get("whiteboard_update")
+        suggestions = parsed.get("suggestions", [])
 
         session["messages"].append({
             "role": "assistant",
@@ -236,7 +246,8 @@ async def chat(request: ChatRequest):
         return ChatResponse(
             message=ai_message,
             whiteboard_update=whiteboard_update,
-            session_id=request.session_id
+            session_id=request.session_id,
+            suggestions=suggestions[:3] if suggestions else None
         )
 
     except httpx.HTTPStatusError as e:

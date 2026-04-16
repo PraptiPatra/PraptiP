@@ -19,6 +19,7 @@ export default function ConversationPanel({
   onClose,
   isSpeaking,
   onStopSpeaking,
+  suggestions,
 }) {
   const [inputText, setInputText] = useState("");
   const [isListening, setIsListening] = useState(false);
@@ -215,6 +216,55 @@ export default function ConversationPanel({
               <div className="msg-user" style={{ opacity: 0.6 }}>
                 {interimText}...
               </div>
+            )}
+
+            {/* Suggestion buttons */}
+            {!isLoading && suggestions && suggestions.length > 0 && (
+              <motion.div
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.3, delay: 0.2 }}
+                style={{
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: 8,
+                  padding: "4px 0",
+                }}
+                data-testid="suggestions-area"
+              >
+                {suggestions.map((suggestion, i) => (
+                  <button
+                    key={i}
+                    onClick={() => onSendMessage(suggestion)}
+                    data-testid={`suggestion-btn-${i}`}
+                    style={{
+                      alignSelf: "flex-start",
+                      background: "transparent",
+                      border: "1.5px solid rgba(0, 85, 255, 0.2)",
+                      borderRadius: 14,
+                      padding: "8px 16px",
+                      fontSize: 13,
+                      fontFamily: "Manrope, sans-serif",
+                      fontWeight: 500,
+                      color: "#0055FF",
+                      cursor: "pointer",
+                      transition: "all 0.2s ease",
+                      textAlign: "left",
+                      lineHeight: 1.4,
+                    }}
+                    onMouseEnter={(e) => {
+                      e.target.style.background = "rgba(0, 85, 255, 0.06)";
+                      e.target.style.borderColor = "rgba(0, 85, 255, 0.4)";
+                    }}
+                    onMouseLeave={(e) => {
+                      e.target.style.background = "transparent";
+                      e.target.style.borderColor = "rgba(0, 85, 255, 0.2)";
+                    }}
+                  >
+                    {suggestion}
+                  </button>
+                ))}
+              </motion.div>
             )}
 
             <div ref={messagesEndRef} />

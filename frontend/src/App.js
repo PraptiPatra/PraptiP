@@ -17,6 +17,7 @@ function App() {
   const [isVoiceMode, setIsVoiceMode] = useState(true);
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [isSpeaking, setIsSpeaking] = useState(false);
+  const [suggestions, setSuggestions] = useState([]);
   const audioRef = useRef(null);
 
   const sendMessage = useCallback(async (text) => {
@@ -25,6 +26,7 @@ function App() {
     const userMsg = { role: "user", content: text, id: crypto.randomUUID() };
     setMessages((prev) => [...prev, userMsg]);
     setIsLoading(true);
+    setSuggestions([]);
 
     try {
       const response = await axios.post(`${API}/chat`, {
@@ -32,10 +34,14 @@ function App() {
         session_id: sessionId,
       });
 
-      const { message, whiteboard_update } = response.data;
+      const { message, whiteboard_update, suggestions: newSuggestions } = response.data;
 
       const aiMsg = { role: "assistant", content: message, id: crypto.randomUUID() };
       setMessages((prev) => [...prev, aiMsg]);
+
+      if (newSuggestions && newSuggestions.length > 0) {
+        setSuggestions(newSuggestions);
+      }
 
       if (whiteboard_update) {
         setScenes((prev) => [
@@ -88,6 +94,7 @@ function App() {
     }
     setScenes([]);
     setMessages([]);
+    setSuggestions([]);
   }, [sessionId]);
 
   const stopSpeaking = useCallback(() => {
@@ -138,6 +145,7 @@ function App() {
         onClose={() => setIsSidebarOpen(false)}
         isSpeaking={isSpeaking}
         onStopSpeaking={stopSpeaking}
+        suggestions={suggestions}
       />
 
       <SessionControls

@@ -78,13 +78,20 @@ class WhiteboardAgentTester:
             has_message = 'message' in response
             has_session_id = 'session_id' in response
             has_whiteboard_update = 'whiteboard_update' in response
+            has_suggestions = 'suggestions' in response
             
             print(f"   Has message: {has_message}")
             print(f"   Has session_id: {has_session_id}")
             print(f"   Has whiteboard_update: {has_whiteboard_update}")
+            print(f"   Has suggestions: {has_suggestions}")
             
             if response.get('whiteboard_update'):
                 print(f"   Whiteboard update type: {response['whiteboard_update'].get('scene_type')}")
+            
+            if response.get('suggestions'):
+                suggestions = response['suggestions']
+                print(f"   Suggestions count: {len(suggestions)}")
+                print(f"   Suggestions: {suggestions}")
             
             return has_message and has_session_id
         return False
@@ -278,6 +285,79 @@ class WhiteboardAgentTester:
                 print("   No illustration generated")
                 return True  # Still valid if no illustration
         return False
+    def test_suggestions_feature(self):
+        """Test that suggestions are returned in chat responses"""
+        success, response = self.run_test(
+            "Chat - Suggestions Feature",
+            "POST",
+            "chat",
+            200,
+            data={
+                "message": "I'm trying to decide between iPhone and Android for my next phone",
+                "session_id": str(uuid.uuid4())
+            },
+            timeout=60
+        )
+        
+        if success:
+            suggestions = response.get('suggestions')
+            if suggestions:
+                print(f"   Suggestions returned: {len(suggestions)} items")
+                print(f"   Suggestions: {suggestions}")
+                
+                # Check suggestions are strings and reasonable length
+                valid_suggestions = all(
+                    isinstance(s, str) and len(s) > 0 and len(s) < 100 
+                    for s in suggestions
+                )
+                
+                # Should have 2-3 suggestions as per prompt
+                suggestion_count_ok = 2 <= len(suggestions) <= 3
+                
+                print(f"   Valid suggestion format: {valid_suggestions}")
+                print(f"   Suggestion count (2-3): {suggestion_count_ok}")
+                
+                return valid_suggestions and suggestion_count_ok
+            else:
+                print("   No suggestions returned")
+                return False
+        return False
+
+    def test_ai_narration(self):
+        """Test that AI narrates what it draws on whiteboard"""
+        success, response = self.run_test(
+            "Chat - AI Narration",
+            "POST",
+            "chat",
+            200,
+            data={
+                "message": "Compare pros and cons of working from home vs office",
+                "session_id": str(uuid.uuid4())
+            },
+            timeout=60
+        )
+        
+        if success:
+            message = response.get('message', '')
+            whiteboard_update = response.get('whiteboard_update')
+            
+            if whiteboard_update:
+                scene_type = whiteboard_update.get('scene_type')
+                print(f"   Scene type: {scene_type}")
+                print(f"   Message length: {len(message)}")
+                
+                # Check if message mentions drawing/whiteboard activity
+                narration_keywords = ['draw', 'whiteboard', 'show', 'display', 'create', 'pros', 'cons', 'comparison']
+                has_narration = any(keyword in message.lower() for keyword in narration_keywords)
+                
+                print(f"   Contains narration keywords: {has_narration}")
+                print(f"   Message preview: {message[:150]}...")
+                
+                return has_narration
+            else:
+                print("   No whiteboard update to narrate")
+                return True  # Valid if no drawing
+        return False
 
 def main():
     print("🚀 Starting Whiteboard Agent Backend Tests")
@@ -290,6 +370,8 @@ def main():
         ("Health Check", tester.test_health),
         ("Chat Basic", tester.test_chat_basic),
         ("Chat with Whiteboard", tester.test_chat_with_whiteboard_update),
+        ("Suggestions Feature", tester.test_suggestions_feature),
+        ("AI Narration", tester.test_ai_narration),
         ("Text-to-Speech", tester.test_tts),
         ("Session Reset", tester.test_session_reset),
         ("Invalid Endpoint", tester.test_invalid_endpoints),

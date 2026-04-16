@@ -203,7 +203,7 @@ function ComparisonScene({ data, rng }) {
           <AnimatedGroup key={oi} delay={baseDelay}>
             {oi > 0 && (
               <AnimatedPath
-                d={roughLine(colX, 80, colX, 75 + ((opt.points || []).length + 1) * 34, rng, 1)}
+                d={roughLine(colX, 80, colX, 75 + ((opt.points || []).length + 1) * 42, rng, 1)}
                 delay={baseDelay}
                 duration={0.5}
                 stroke="#E4E4E7"
@@ -217,7 +217,7 @@ function ComparisonScene({ data, rng }) {
             {(opt.points || []).map((pt, pi) => (
               <AnimatedGroup key={pi} delay={baseDelay + 0.2 + pi * 0.15}>
                 <AnimatedPath
-                  d={`M ${colX + 18} ${125 + pi * 34} L ${colX + 24} ${125 + pi * 34}`}
+                  d={`M ${colX + 18} ${125 + pi * 42} L ${colX + 24} ${125 + pi * 42}`}
                   delay={baseDelay + 0.2 + pi * 0.15}
                   duration={0.2}
                   strokeWidth={3}
@@ -226,11 +226,12 @@ function ComparisonScene({ data, rng }) {
                 />
                 <AnimatedText
                   x={colX + 32}
-                  y={130 + pi * 34}
+                  y={130 + pi * 42}
                   fontSize={18}
                   fill="#52525B"
                   delay={baseDelay + 0.25 + pi * 0.15}
                   maxWidth={Math.floor((colWidth - 40) / 10)}
+                  lineHeight={22}
                 >
                   {pt}
                 </AnimatedText>
@@ -250,6 +251,7 @@ function ProsConsScene({ data, rng }) {
   const cons = data.cons || [];
   const hasIllustration = data.illustration && illustrations[data.illustration];
   const halfW = (hasIllustration ? CW - 100 : CW) / 2;
+  const ROW_H = 48;
 
   return (
     <>
@@ -264,7 +266,7 @@ function ProsConsScene({ data, rng }) {
       </AnimatedText>
       <AnimatedPath d={roughLine(MX, 75, MX + halfW * 2, 75, rng, 1)} delay={0.4} duration={0.5} stroke="#D4D4D8" showPen={false} />
       <AnimatedPath
-        d={roughLine(MX + halfW, 80, MX + halfW, 80 + Math.max(pros.length, cons.length) * 34 + 30, rng, 1)}
+        d={roughLine(MX + halfW, 80, MX + halfW, 80 + Math.max(pros.length, cons.length) * ROW_H + 30, rng, 1)}
         delay={0.5}
         duration={0.6}
         stroke="#E4E4E7"
@@ -277,8 +279,8 @@ function ProsConsScene({ data, rng }) {
       </AnimatedText>
       {pros.map((pro, i) => (
         <AnimatedGroup key={`pro-${i}`} delay={0.6 + i * 0.15}>
-          <AnimatedPath d={roughCheckmark(MX + 16, 118 + i * 34, 14)} delay={0.65 + i * 0.15} duration={0.3} stroke="#22C55E" strokeWidth={2.5} showPen={true} />
-          <AnimatedText x={MX + 38} y={132 + i * 34} fontSize={17} fill="#3F3F46" delay={0.7 + i * 0.15} maxWidth={20}>
+          <AnimatedPath d={roughCheckmark(MX + 16, 118 + i * ROW_H, 14)} delay={0.65 + i * 0.15} duration={0.3} stroke="#22C55E" strokeWidth={2.5} showPen={true} />
+          <AnimatedText x={MX + 38} y={132 + i * ROW_H} fontSize={17} fill="#3F3F46" delay={0.7 + i * 0.15} maxWidth={28} lineHeight={22}>
             {pro}
           </AnimatedText>
         </AnimatedGroup>
@@ -289,8 +291,8 @@ function ProsConsScene({ data, rng }) {
       </AnimatedText>
       {cons.map((con, i) => (
         <AnimatedGroup key={`con-${i}`} delay={0.6 + i * 0.15}>
-          <AnimatedPath d={roughCross(MX + halfW + 16, 118 + i * 34, 14)} delay={0.65 + i * 0.15} duration={0.3} stroke="#E63946" strokeWidth={2.5} showPen={true} />
-          <AnimatedText x={MX + halfW + 38} y={132 + i * 34} fontSize={17} fill="#3F3F46" delay={0.7 + i * 0.15} maxWidth={20}>
+          <AnimatedPath d={roughCross(MX + halfW + 16, 118 + i * ROW_H, 14)} delay={0.65 + i * 0.15} duration={0.3} stroke="#E63946" strokeWidth={2.5} showPen={true} />
+          <AnimatedText x={MX + halfW + 38} y={132 + i * ROW_H} fontSize={17} fill="#3F3F46" delay={0.7 + i * 0.15} maxWidth={28} lineHeight={22}>
             {con}
           </AnimatedText>
         </AnimatedGroup>
@@ -483,11 +485,11 @@ function NotesScene({ data, rng }) {
       <AnimatedPath d={roughLine(MX, 75, MX + 240, 75, rng, 1)} delay={0.3} duration={0.4} stroke="#D4D4D8" showPen={false} />
 
       {notes.map((note, i) => {
-        const ny = 95 + i * 34;
+        const ny = 95 + i * 42;
         return (
           <AnimatedGroup key={i} delay={0.4 + i * 0.15}>
             <circle cx={MX + 18} cy={ny + 8} r={3.5} fill="#111" opacity={0.5} />
-            <AnimatedText x={MX + 32} y={ny + 14} fontSize={18} fill="#3F3F46" delay={0.45 + i * 0.15} maxWidth={hasIllustration ? 36 : 42}>
+            <AnimatedText x={MX + 32} y={ny + 14} fontSize={18} fill="#3F3F46" delay={0.45 + i * 0.15} maxWidth={hasIllustration ? 36 : 42} lineHeight={22}>
               {note}
             </AnimatedText>
           </AnimatedGroup>

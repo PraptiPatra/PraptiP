@@ -18,11 +18,11 @@ function getSceneHeight(scene) {
       return 170;
     case "comparison": {
       const maxPts = Math.max(1, ...(d.options || []).map((o) => (o.points || []).length));
-      return 100 + maxPts * 34 + 70;
+      return 100 + maxPts * 42 + 70;
     }
     case "pros_cons": {
       const maxItems = Math.max((d.pros || []).length, (d.cons || []).length, 1);
-      return 100 + maxItems * 34 + 50;
+      return 100 + maxItems * 48 + 50;
     }
     case "checklist":
       return 80 + (d.items || []).length * 40 + 30;
@@ -33,7 +33,7 @@ function getSceneHeight(scene) {
     case "recommendation":
       return 80 + (d.key_reasons || []).length * 32 + 120;
     case "notes":
-      return 80 + (d.notes || []).length * 34 + 30;
+      return 80 + (d.notes || []).length * 42 + 30;
     case "process":
       return 80 + (d.steps || []).length * 72 + 30;
     default:
