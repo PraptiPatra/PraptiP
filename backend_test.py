@@ -171,6 +171,114 @@ class WhiteboardAgentTester:
         )
         return success
 
+    def test_health_illustration(self):
+        """Test health-related topics generate medical illustrations"""
+        success, response = self.run_test(
+            "Health Topic - Medical Illustration",
+            "POST",
+            "chat",
+            200,
+            data={
+                "message": "I need help choosing between different health insurance plans. I want to compare coverage for heart surgery and general medical care.",
+                "session_id": str(uuid.uuid4())
+            },
+            timeout=60
+        )
+        
+        if success:
+            whiteboard_update = response.get('whiteboard_update')
+            if whiteboard_update and whiteboard_update.get('data'):
+                illustration = whiteboard_update['data'].get('illustration')
+                print(f"   Generated illustration: {illustration}")
+                # Should generate health-related illustrations
+                health_illustrations = ['medical', 'heart', 'stethoscope', 'pill']
+                return illustration in health_illustrations
+            else:
+                print("   No illustration generated")
+                return True  # Still valid if no illustration
+        return False
+
+    def test_food_illustration(self):
+        """Test food-related topics generate food illustrations"""
+        success, response = self.run_test(
+            "Food Topic - Food Illustration",
+            "POST",
+            "chat",
+            200,
+            data={
+                "message": "I'm planning to open a restaurant and need to decide between pizza, general food, or fine dining with utensils and formal service.",
+                "session_id": str(uuid.uuid4())
+            },
+            timeout=60
+        )
+        
+        if success:
+            whiteboard_update = response.get('whiteboard_update')
+            if whiteboard_update and whiteboard_update.get('data'):
+                illustration = whiteboard_update['data'].get('illustration')
+                print(f"   Generated illustration: {illustration}")
+                # Should generate food-related illustrations
+                food_illustrations = ['food', 'pizza', 'utensils', 'coffee']
+                return illustration in food_illustrations
+            else:
+                print("   No illustration generated")
+                return True  # Still valid if no illustration
+        return False
+
+    def test_music_sports_illustration(self):
+        """Test music and sports topics generate appropriate illustrations"""
+        success, response = self.run_test(
+            "Music/Sports Topic - Appropriate Illustration",
+            "POST",
+            "chat",
+            200,
+            data={
+                "message": "I'm choosing between starting a music studio with headphones and audio equipment, or opening a sports gym with dumbbells and football training.",
+                "session_id": str(uuid.uuid4())
+            },
+            timeout=60
+        )
+        
+        if success:
+            whiteboard_update = response.get('whiteboard_update')
+            if whiteboard_update and whiteboard_update.get('data'):
+                illustration = whiteboard_update['data'].get('illustration')
+                print(f"   Generated illustration: {illustration}")
+                # Should generate music or sports related illustrations
+                music_sports_illustrations = ['music', 'headphones', 'paint', 'football', 'dumbbell', 'bicycle']
+                return illustration in music_sports_illustrations
+            else:
+                print("   No illustration generated")
+                return True  # Still valid if no illustration
+        return False
+
+    def test_animals_nature_illustration(self):
+        """Test animals and nature topics generate appropriate illustrations"""
+        success, response = self.run_test(
+            "Animals/Nature Topic - Appropriate Illustration",
+            "POST",
+            "chat",
+            200,
+            data={
+                "message": "I'm deciding between adopting a dog or cat as a pet, and also considering if I should move to a house near mountains and trees.",
+                "session_id": str(uuid.uuid4())
+            },
+            timeout=60
+        )
+        
+        if success:
+            whiteboard_update = response.get('whiteboard_update')
+            if whiteboard_update and whiteboard_update.get('data'):
+                illustration = whiteboard_update['data'].get('illustration')
+                print(f"   Generated illustration: {illustration}")
+                # Should generate animals or nature related illustrations
+                animals_nature_illustrations = ['dog', 'cat', 'tree', 'mountain', 'sun', 'house']
+                return illustration in animals_nature_illustrations
+            else:
+                print("   No illustration generated")
+                return True  # Still valid if no illustration
+        return False
+
 def main():
     print("🚀 Starting Whiteboard Agent Backend Tests")
     print("=" * 50)
@@ -185,6 +293,10 @@ def main():
         ("Text-to-Speech", tester.test_tts),
         ("Session Reset", tester.test_session_reset),
         ("Invalid Endpoint", tester.test_invalid_endpoints),
+        ("Health Illustration", tester.test_health_illustration),
+        ("Food Illustration", tester.test_food_illustration),
+        ("Music/Sports Illustration", tester.test_music_sports_illustration),
+        ("Animals/Nature Illustration", tester.test_animals_nature_illustration),
     ]
     
     results = {}

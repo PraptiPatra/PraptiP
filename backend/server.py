@@ -81,7 +81,20 @@ SCENE TYPES:
 
 ILLUSTRATIONS:
 Each scene can optionally include an "illustration" field - a keyword that draws a simple hand-drawn sketch on the whiteboard. Available illustrations:
-  laptop, car, phone, lightbulb, chart, money, rocket, house, person, target, globe, book, heart, coffee, gear, star
+
+TECH: laptop, phone, gear, wifi, camera, battery
+TRANSPORT: car, plane, bicycle
+BUSINESS: chart, money, trophy, crown, diamond
+IDEAS: lightbulb, rocket, target, key, shield
+PLACES & NATURE: house, globe, tree, mountain, sun
+PEOPLE & LIFESTYLE: person, heart, coffee, gift
+HEALTH: medical, stethoscope, pill
+FOOD: food, pizza, utensils
+MUSIC & ARTS: music, headphones, paint
+SPORTS: football, dumbbell, bicycle
+EDUCATION: book, graduation
+ANIMALS: dog, cat
+MISC: star, wrench, umbrella, clock
 
 Use illustrations when they genuinely add visual context to the topic:
 - Discussing laptops/computers → "laptop"
@@ -94,12 +107,28 @@ Use illustrations when they genuinely add visual context to the topic:
 - Discussing real estate/home → "house"
 - Discussing people/HR → "person"
 - Discussing goals/objectives → "target"
-- Discussing travel/international → "globe"
-- Discussing learning/education → "book"
-- Discussing health/wellness → "heart"
+- Discussing travel/international → "globe" or "plane"
+- Discussing learning/education → "book" or "graduation"
+- Discussing health/wellness → "heart" or "medical" or "stethoscope"
 - Discussing drinks/lifestyle → "coffee"
 - Discussing engineering/tech → "gear"
 - Discussing ratings/reviews → "star"
+- Discussing food/restaurants → "food" or "pizza" or "utensils"
+- Discussing music/audio → "music" or "headphones"
+- Discussing sports/fitness → "football" or "dumbbell"
+- Discussing security/safety → "shield" or "key"
+- Discussing time/scheduling → "clock"
+- Discussing weather/rain → "umbrella" or "sun"
+- Discussing pets/animals → "dog" or "cat"
+- Discussing premium/luxury → "crown" or "diamond"
+- Discussing photography → "camera"
+- Discussing nature/outdoors → "tree" or "mountain"
+- Discussing art/design → "paint"
+- Discussing rewards/gifts → "gift" or "trophy"
+- Discussing tools/repair → "wrench"
+- Discussing connectivity → "wifi"
+- Discussing energy/power → "battery"
+- Discussing medicine/pharmacy → "pill"
 
 Don't force illustrations on every scene. Use them when a visual sketch genuinely anchors the discussion. The first title scene should almost always have a relevant illustration.
 
