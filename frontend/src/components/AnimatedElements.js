@@ -14,7 +14,8 @@ function PenMarker({ d, delay, duration }) {
     if (!pen || !d) return;
 
     const svg = pen.ownerSVGElement;
-    if (!svg) return;
+    const hostGroup = pen.parentNode;
+    if (!svg || !(hostGroup instanceof SVGElement)) return;
 
     const ns = "http://www.w3.org/2000/svg";
     const tempPath = document.createElementNS(ns, "path");
@@ -22,18 +23,19 @@ function PenMarker({ d, delay, duration }) {
     tempPath.style.visibility = "hidden";
     tempPath.style.position = "absolute";
     tempPath.style.pointerEvents = "none";
-    svg.appendChild(tempPath);
+    // Keep the helper path in the same transformed group as the animated path.
+    hostGroup.appendChild(tempPath);
 
     let totalLength;
     try {
       totalLength = tempPath.getTotalLength();
     } catch {
-      svg.removeChild(tempPath);
+      hostGroup.removeChild(tempPath);
       return;
     }
 
     if (totalLength < 2) {
-      svg.removeChild(tempPath);
+      hostGroup.removeChild(tempPath);
       return;
     }
 
@@ -71,7 +73,7 @@ function PenMarker({ d, delay, duration }) {
       } else {
         pen.style.opacity = "0";
         try {
-          if (tempPath.parentNode) svg.removeChild(tempPath);
+          if (tempPath.parentNode) hostGroup.removeChild(tempPath);
         } catch {
           // ignore
         }
@@ -83,7 +85,7 @@ function PenMarker({ d, delay, duration }) {
     return () => {
       cancelAnimationFrame(raf);
       try {
-        if (tempPath.parentNode) svg.removeChild(tempPath);
+        if (tempPath.parentNode) hostGroup.removeChild(tempPath);
       } catch {
         // ignore
       }

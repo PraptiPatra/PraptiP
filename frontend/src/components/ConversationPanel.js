@@ -4,7 +4,6 @@ import {
   Microphone,
   PaperPlaneRight,
   X,
-  SpeakerHigh,
   SpeakerSlash,
   Waveform,
 } from "@phosphor-icons/react";
@@ -24,9 +23,11 @@ export default function ConversationPanel({
   const [inputText, setInputText] = useState("");
   const [isListening, setIsListening] = useState(false);
   const [interimText, setInterimText] = useState("");
+  const [autoListenEnabled, setAutoListenEnabled] = useState(false);
   const messagesEndRef = useRef(null);
   const recognitionRef = useRef(null);
   const inputRef = useRef(null);
+  const hadLoadingRef = useRef(false);
 
   // Auto-scroll messages
   useEffect(() => {
@@ -77,12 +78,54 @@ export default function ConversationPanel({
       recognitionRef.current.stop();
       setIsListening(false);
       setInterimText("");
+      setAutoListenEnabled(false);
     } else {
       if (isSpeaking) onStopSpeaking();
+      setAutoListenEnabled(true);
       recognitionRef.current.start();
       setIsListening(true);
     }
   }, [isListening, isSpeaking, onStopSpeaking]);
+
+  useEffect(() => {
+    if (!isVoiceMode || !autoListenEnabled || isListening) {
+      hadLoadingRef.current = isLoading;
+      return;
+    }
+
+    if (isLoading) {
+      hadLoadingRef.current = true;
+      return;
+    }
+
+    if (!isSpeaking && hadLoadingRef.current) {
+      hadLoadingRef.current = false;
+      setTimeout(() => {
+        if (!recognitionRef.current || isLoading || isSpeaking || isListening || !isVoiceMode || !autoListenEnabled) {
+          return;
+        }
+        try {
+          recognitionRef.current.start();
+          setIsListening(true);
+        } catch {
+          // Browser may reject rapid restarts; user can manually tap mic.
+        }
+      }, 250);
+    }
+  }, [isLoading, isListening, isSpeaking, isVoiceMode, autoListenEnabled]);
+
+  useEffect(() => {
+    if (!isVoiceMode) {
+      setAutoListenEnabled(false);
+      setIsListening(false);
+      setInterimText("");
+      try {
+        recognitionRef.current?.stop();
+      } catch {
+        // ignore if already stopped
+      }
+    }
+  }, [isVoiceMode]);
 
   const handleSubmit = (e) => {
     e.preventDefault();
