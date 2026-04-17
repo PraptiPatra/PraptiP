@@ -31,6 +31,58 @@ function wrapText(text, maxChars = 42) {
   return lines;
 }
 
+function SceneDoodles({ index, rng }) {
+  const leftX = 24 + (index % 3) * 5;
+  const rightX = 864 - (index % 3) * 4;
+  const accent = "#A1A1AA";
+  const arrow = roughArrowPath(rightX, 30, rightX - 24, 45, rng);
+
+  return (
+    <g opacity={0.55}>
+      <AnimatedPath
+        d={roughLine(leftX, 26, leftX + 18, 18, rng, 1.1)}
+        delay={0.08}
+        duration={0.35}
+        stroke={accent}
+        strokeWidth={1.5}
+        showPen={false}
+      />
+      <AnimatedPath
+        d={roughLine(leftX + 9, 38, leftX + 24, 43, rng, 1.0)}
+        delay={0.17}
+        duration={0.32}
+        stroke={accent}
+        strokeWidth={1.3}
+        showPen={false}
+      />
+      <AnimatedPath
+        d={`M ${leftX + 12} 58 m -5 0 a 5 5 0 1 0 10 0 a 5 5 0 1 0 -10 0`}
+        delay={0.28}
+        duration={0.45}
+        stroke={accent}
+        strokeWidth={1.2}
+        showPen={false}
+      />
+      <AnimatedPath
+        d={arrow.line}
+        delay={0.12}
+        duration={0.4}
+        stroke={accent}
+        strokeWidth={1.4}
+        showPen={false}
+      />
+      <AnimatedPath
+        d={arrow.head}
+        delay={0.31}
+        duration={0.25}
+        stroke={accent}
+        strokeWidth={1.3}
+        showPen={false}
+      />
+    </g>
+  );
+}
+
 /* ─── ILLUSTRATION RENDERER ───────────────────────────── */
 function IllustrationRenderer({ name, x, y, size = 70, baseDelay = 0.2 }) {
   const illust = illustrations[name];
@@ -580,6 +632,7 @@ export default function SceneRenderer({ scene, y, width, index }) {
 
   return (
     <g transform={`translate(0, ${y})`} data-testid={`scene-${scene.scene_type}-${index}`}>
+      <SceneDoodles index={index} rng={rng} />
       <SceneComponent data={scene.data} rng={rng} />
     </g>
   );

@@ -8,6 +8,7 @@ import httpx
 import json
 import uuid
 import base64
+import re
 from pathlib import Path
 from pydantic import BaseModel, Field
 from typing import List, Optional, Dict, Any
@@ -144,6 +145,7 @@ BEHAVIORAL RULES:
 - Use recommendation when you have enough info to conclude
 - Ask thoughtful questions to understand the user's actual needs
 - Be warm, intelligent, and consultative in your responses
+- Do NOT use markdown symbols in spoken text (no *, **, _, `, #, bullet markers). Return plain conversational text only.
 - You can handle ANY topic - business, personal decisions, technical choices, planning, etc.
 - Prefer drawing after gathering meaningful info, not after every single message
 - When you do draw, make it count - the visual should provide clarity the text alone doesn't
@@ -175,6 +177,25 @@ class TTSRequest(BaseModel):
 
 class SessionResetRequest(BaseModel):
     session_id: str
+
+
+def sanitize_assistant_message(text: Any) -> str:
+    """Normalize model output so TTS never reads markdown tokens aloud."""
+    if not isinstance(text, str):
+        return "I'm thinking about this..."
+
+    cleaned = text.replace("\r\n", "\n")
+    cleaned = re.sub(r"\*\*(.*?)\*\*", r"\1", cleaned, flags=re.DOTALL)
+    cleaned = re.sub(r"__(.*?)__", r"\1", cleaned, flags=re.DOTALL)
+    cleaned = re.sub(r"`([^`]*)`", r"\1", cleaned)
+    cleaned = re.sub(r"^\s*[-*]\s+", "", cleaned, flags=re.MULTILINE)
+    cleaned = re.sub(r"^\s*\d+\.\s+", "", cleaned, flags=re.MULTILINE)
+    cleaned = cleaned.replace("*", "").replace("_", "").replace("#", "")
+    cleaned = re.sub(r"[ \t]{2,}", " ", cleaned)
+    cleaned = re.sub(r"\n{3,}", "\n\n", cleaned)
+
+    cleaned = cleaned.strip()
+    return cleaned or "I'm thinking about this..."
 
 
 def get_session(session_id: str) -> Dict:
@@ -231,13 +252,14 @@ async def chat(request: ChatRequest):
         ai_content = result["choices"][0]["message"]["content"]
         parsed = json.loads(ai_content)
 
-        ai_message = parsed.get("message", "I'm thinking about this...")
+        ai_message = sanitize_assistant_message(parsed.get("message", "I'm thinking about this..."))
         whiteboard_update = parsed.get("whiteboard_update")
         suggestions = parsed.get("suggestions", [])
+        parsed["message"] = ai_message
 
         session["messages"].append({
             "role": "assistant",
-            "content": ai_content
+            "content": json.dumps(parsed)
         })
 
         if whiteboard_update:
