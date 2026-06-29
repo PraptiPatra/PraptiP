@@ -3,6 +3,7 @@ import { useState } from "react";
 import {
   Activity, ChevronRight, Loader2,
   CheckCircle2, XCircle, FlaskConical,
+  Microscope, TestTube2, Waves, Dna, ClipboardList,
 } from "lucide-react";
 import FileUpload from "@/components/FileUpload";
 import ArmsMapper from "@/components/ArmsMapper";
@@ -109,14 +110,14 @@ export default function Home() {
               Expected Assay Sheets
             </p>
             {[
-              { icon: "🔬", name: "H&E and IHC_n=16", label: "Histopathology" },
-              { icon: "🧪", name: "Cytokine_n=16", label: "Cytokine Panel" },
-              { icon: "🌊", name: "Flowcytometry_n=16", label: "Flow Cytometry" },
-              { icon: "🧬", name: "NanoString_n=16", label: "NanoString GEx" },
-              { icon: "📋", name: "Assay details", label: "Metadata (optional)" },
+              { Icon: Microscope, name: "H&E and IHC_n=16", label: "Histopathology" },
+              { Icon: TestTube2,  name: "Cytokine_n=16",    label: "Cytokine Panel" },
+              { Icon: Waves,      name: "Flowcytometry_n=16", label: "Flow Cytometry" },
+              { Icon: Dna,        name: "NanoString_n=16",  label: "NanoString GEx" },
+              { Icon: ClipboardList, name: "Assay details", label: "Metadata (optional)" },
             ].map((a) => (
               <div key={a.name} className="flex items-center gap-2.5">
-                <span className="text-sm">{a.icon}</span>
+                <a.Icon className="h-3.5 w-3.5 flex-shrink-0" style={{ color: "var(--text-muted)" }} />
                 <div>
                   <span className="text-xs font-medium" style={{ color: "var(--text-primary)" }}>{a.label}</span>
                   <span className="text-[10px] ml-1.5 font-mono" style={{ color: "var(--text-muted)" }}>{a.name}</span>

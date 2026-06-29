@@ -2,8 +2,10 @@
 import {
   CheckCircle2, XCircle, AlertTriangle, Info,
   ChevronDown, ChevronRight, Users, FlaskConical,
+  Microscope, TestTube2, Waves, Dna, ClipboardList,
 } from "lucide-react";
 import { useState } from "react";
+import React from "react";
 import clsx from "clsx";
 import { ValidationResponse, ValidationIssue, AssayValidationResult } from "@/lib/api";
 
@@ -36,11 +38,11 @@ const SEVERITY_CONFIG = {
   },
 };
 
-const ASSAY_ICONS: Record<string, string> = {
-  histopathology: "🔬",
-  cytokine: "🧪",
-  flow_cytometry: "🌊",
-  nanostring: "🧬",
+const ASSAY_ICON_MAP: Record<string, React.ElementType> = {
+  histopathology: Microscope,
+  cytokine: TestTube2,
+  flow_cytometry: Waves,
+  nanostring: Dna,
 };
 
 // ── sub-components ─────────────────────────────────────────────────────────
@@ -115,7 +117,7 @@ function AssayCard({ result }: { result: AssayValidationResult }) {
         className="w-full flex items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-white/[0.02]"
         style={{ background: "var(--surface-raised)" }}
       >
-        <span className="text-lg">{ASSAY_ICONS[result.assay_name] ?? "📋"}</span>
+        {(() => { const Icon = ASSAY_ICON_MAP[result.assay_name] ?? ClipboardList; return <Icon className="h-4 w-4 flex-shrink-0" style={{ color: "var(--text-muted)" }} />; })()}
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
             <span className="text-sm font-medium" style={{ color: "var(--text-primary)" }}>

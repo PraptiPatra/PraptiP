@@ -1,14 +1,15 @@
 "use client";
 import { useState } from "react";
-import { Download, ChevronDown, ChevronRight, Database } from "lucide-react";
+import React from "react";
+import { Download, ChevronDown, ChevronRight, Database, Microscope, TestTube2, Waves, Dna, ClipboardList } from "lucide-react";
 import clsx from "clsx";
 import { CleanAssayData } from "@/lib/api";
 
-const ASSAY_ICONS: Record<string, string> = {
-  histopathology: "🔬",
-  cytokine: "🧪",
-  flow_cytometry: "🌊",
-  nanostring: "🧬",
+const ASSAY_ICON_MAP: Record<string, React.ElementType> = {
+  histopathology: Microscope,
+  cytokine: TestTube2,
+  flow_cytometry: Waves,
+  nanostring: Dna,
 };
 
 const PREVIEW_ROWS = 5;
@@ -149,8 +150,8 @@ export default function OutputPanel({ cleanData }: { cleanData: Record<string, C
           <h3 className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>
             Validated Output
           </h3>
-          <span className="text-[10px] rounded-full px-2 py-0.5 bg-emerald-500/15 text-emerald-400">
-            LLM-Ready
+          <span className="text-[10px] rounded px-2 py-0.5 border font-mono" style={{ borderColor: "var(--border)", color: "var(--text-muted)" }}>
+            structured
           </span>
         </div>
         <button
@@ -178,7 +179,7 @@ export default function OutputPanel({ cleanData }: { cleanData: Record<string, C
                 : { background: "transparent", borderColor: "var(--border)", color: "var(--text-secondary)" }
             }
           >
-            <span>{ASSAY_ICONS[key] ?? "📋"}</span>
+            {(() => { const Icon = ASSAY_ICON_MAP[key] ?? ClipboardList; return <Icon className="h-3.5 w-3.5" />; })()}
             {d.display_name}
             <span
               className="rounded-full px-1.5 py-0.5 text-[10px]"
@@ -198,7 +199,7 @@ export default function OutputPanel({ cleanData }: { cleanData: Record<string, C
         >
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <span className="text-lg">{ASSAY_ICONS[openAssay] ?? "📋"}</span>
+              {(() => { const Icon = ASSAY_ICON_MAP[openAssay] ?? ClipboardList; return <Icon className="h-4 w-4" style={{ color: "var(--accent)" }} />; })()}
               <span className="text-sm font-medium" style={{ color: "var(--text-primary)" }}>
                 {cleanData[openAssay].display_name}
               </span>

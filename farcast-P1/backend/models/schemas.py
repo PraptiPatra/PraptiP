@@ -57,6 +57,15 @@ class ArmsConfig(BaseModel):
     )
 
 
+class FeatureSelectionSummary(BaseModel):
+    selected_features: list[str]
+    total_features: int
+    selected_count: int
+    method_used: str
+    skipped: bool
+    skip_reason: Optional[str] = None
+
+
 class CleanAssayData(BaseModel):
     assay_name: str
     display_name: str
@@ -64,6 +73,7 @@ class CleanAssayData(BaseModel):
     columns: list[str]
     rows: list[dict]
     metadata: dict  # arms, timepoints, special columns info
+    feature_selection: Optional[FeatureSelectionSummary] = None
 
 
 class ValidationResponse(BaseModel):

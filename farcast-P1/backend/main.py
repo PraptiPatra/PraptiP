@@ -51,6 +51,7 @@ def health():
 async def validate_file(
     file: UploadFile = File(...),
     arms_config_json: str = Form(default=None),
+    use_feature_selection: bool = Form(default=True),
 ):
     # ── Parse arms config ──────────────────────────────────────────────────
     if arms_config_json:
@@ -96,7 +97,10 @@ async def validate_file(
     clean_data: dict[str, CleanAssayData] = {}
     for assay_key, df in assay_dfs.items():
         try:
-            clean_data[assay_key] = format_assay(assay_key, df, arms_config)
+            clean_data[assay_key] = format_assay(
+                assay_key, df, arms_config,
+                use_feature_selection=use_feature_selection,
+            )
         except Exception as e:
             pass  # formatter failure should not block validation response
 
