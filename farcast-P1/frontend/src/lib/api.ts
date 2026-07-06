@@ -1,5 +1,12 @@
 export const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 
+export interface FeatureStatEntry {
+  feature: string;
+  rho: number | null;
+  p_value: number | null;
+  sd: number | null;
+}
+
 export interface ValidationIssue {
   severity: "error" | "warning" | "info";
   code: string;
@@ -41,6 +48,7 @@ export interface FeatureSelectionSummary {
   method_used: "spearman_pvalue" | "spearman_top_n" | "sd_threshold" | "sd_top_n" | "passthrough";
   skipped: boolean;
   skip_reason?: string;
+  feature_stats?: FeatureStatEntry[];
 }
 
 export interface CleanAssayData {
@@ -85,6 +93,101 @@ export async function validateFile(
     throw new Error(err.detail ?? `HTTP ${res.status}`);
   }
 
+  return res.json();
+}
+
+// ── Analysis types ────────────────────────────────────────────────────────────
+
+export interface FeatureCitation {
+  name: string;
+  rho: number | null;
+  p_value: number | null;
+  direction: string;
+}
+
+export interface ResearchRef {
+  citation: string;
+  relevance: string;
+}
+
+export interface AnalysisFinding {
+  id: string;
+  title: string;
+  assay: string;
+  category: string;
+  features_cited: FeatureCitation[];
+  interpretation: string;
+  clinical_implication: string;
+  confidence: "high" | "medium" | "low";
+  confidence_rationale: string;
+  research_refs: ResearchRef[];
+}
+
+export interface CrossAssayTheme {
+  theme: string;
+  description: string;
+  supporting_findings: string[];
+}
+
+export interface AnalysisResponse {
+  findings: AnalysisFinding[];
+  cross_assay_themes: CrossAssayTheme[];
+  overall_interpretation: string;
+}
+
+export interface SummarySection {
+  heading: string;
+  content: string;
+  finding_ids: string[];
+}
+
+export interface SummaryResponse {
+  title: string;
+  executive_summary: string;
+  sections: SummarySection[];
+  conclusions: string[];
+  limitations: string;
+  methodology_note: string;
+}
+
+export async function runAnalysis(
+  cleanData: Record<string, CleanAssayData>,
+  armsConfig: ArmsConfig
+): Promise<AnalysisResponse> {
+  const res = await fetch(`${API_BASE}/api/analyze`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ clean_data: cleanData, arms_config: armsConfig }),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ detail: "Unknown error" }));
+    throw new Error(err.detail ?? `HTTP ${res.status}`);
+  }
+  return res.json();
+}
+
+export async function generateSummary(
+  findings: AnalysisFinding[],
+  approvedIds: string[],
+  overallInterpretation: string,
+  crossAssayThemes: CrossAssayTheme[],
+  armsConfig: ArmsConfig
+): Promise<SummaryResponse> {
+  const res = await fetch(`${API_BASE}/api/summarize`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      findings,
+      approved_ids: approvedIds,
+      overall_interpretation: overallInterpretation,
+      cross_assay_themes: crossAssayThemes,
+      arms_config: armsConfig,
+    }),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ detail: "Unknown error" }));
+    throw new Error(err.detail ?? `HTTP ${res.status}`);
+  }
   return res.json();
 }
 

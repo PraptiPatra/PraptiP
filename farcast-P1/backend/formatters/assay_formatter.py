@@ -1,6 +1,7 @@
 import pandas as pd
 import numpy as np
-from models.schemas import CleanAssayData, ArmsConfig, FeatureSelectionSummary
+from typing import Optional
+from models.schemas import CleanAssayData, ArmsConfig, FeatureSelectionSummary, FeatureStatEntry
 from validators.schema_validator import ASSAY_SCHEMAS, IDENTITY_COLS
 from formatters.feature_selector import select_features, P_VALUE_THRESHOLD, MIN_FEATURES
 
@@ -121,6 +122,28 @@ def format_assay(
             p_value_threshold=p_value_threshold,
         )
 
+        # Build per-feature stats for selected features only
+        selected_set = set(fs_result.selected_features)
+        def _safe_float(v) -> Optional[float]:
+            if v is None:
+                return None
+            try:
+                f = float(v)
+                return None if np.isnan(f) else f
+            except (TypeError, ValueError):
+                return None
+
+        feature_stats_out = [
+            FeatureStatEntry(
+                feature=s["feature"],
+                rho=_safe_float(s.get("rho")),
+                p_value=_safe_float(s.get("p_value")),
+                sd=_safe_float(s.get("sd")),
+            )
+            for s in fs_result.feature_stats
+            if s.get("feature") in selected_set
+        ]
+
         fs_summary = FeatureSelectionSummary(
             selected_features=fs_result.selected_features,
             total_features=fs_result.total_features,
@@ -128,6 +151,7 @@ def format_assay(
             method_used=fs_result.method_used,
             skipped=fs_result.skipped,
             skip_reason=fs_result.skip_reason,
+            feature_stats=feature_stats_out,
         )
 
         # Trim df_out to identity cols + selected features only

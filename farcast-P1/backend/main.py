@@ -7,13 +7,15 @@ import json
 
 from models.schemas import (
     ValidationResponse, ArmsConfig, AssayValidationResult,
-    AlignmentResult, CleanAssayData, Severity
+    AlignmentResult, CleanAssayData, Severity,
+    AnalyzeRequest, AnalysisResponse, SummaryRequest, SummaryResponse,
 )
 from validators.schema_validator import ASSAY_SCHEMAS, validate_schema
 from validators.value_validator import validate_values
 from validators.sample_aligner import align_samples
 from formatters.assay_formatter import format_assay
 from formatters.feature_selector import RESPONSE_ORDER
+from analysis.llm_analyzer import run_analysis, run_summarize
 
 app = FastAPI(
     title="Farcast TiME Assay Validation API",
@@ -172,3 +174,31 @@ def get_schema(assay_key: str):
         raise HTTPException(status_code=404, detail=f"Unknown assay: {assay_key}")
     schema = ASSAY_SCHEMAS[assay_key].copy()
     return {"assay": assay_key, "schema": schema}
+
+
+@app.post("/api/analyze", response_model=AnalysisResponse)
+async def analyze(request: AnalyzeRequest):
+    """Run LLM-powered immunological analysis on validated clean assay data."""
+    if not request.clean_data:
+        raise HTTPException(status_code=422, detail="clean_data is required")
+    try:
+        return run_analysis(request.clean_data, request.arms_config)
+    except ValueError as e:
+        raise HTTPException(status_code=503, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Analysis failed: {str(e)}")
+
+
+@app.post("/api/summarize", response_model=SummaryResponse)
+async def summarize(request: SummaryRequest):
+    """Generate a clinical summary report from human-approved analysis findings."""
+    if not request.approved_ids:
+        raise HTTPException(status_code=422, detail="approved_ids cannot be empty")
+    if not request.findings:
+        raise HTTPException(status_code=422, detail="findings cannot be empty")
+    try:
+        return run_summarize(request)
+    except ValueError as e:
+        raise HTTPException(status_code=422, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Summary generation failed: {str(e)}")

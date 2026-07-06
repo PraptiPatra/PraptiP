@@ -1,5 +1,5 @@
 from pydantic import BaseModel, Field
-from typing import Optional, Literal
+from typing import Optional, Literal, Any
 from enum import Enum
 
 
@@ -57,6 +57,13 @@ class ArmsConfig(BaseModel):
     )
 
 
+class FeatureStatEntry(BaseModel):
+    feature: str
+    rho: Optional[float] = None
+    p_value: Optional[float] = None
+    sd: Optional[float] = None
+
+
 class FeatureSelectionSummary(BaseModel):
     selected_features: list[str]
     total_features: int
@@ -64,6 +71,7 @@ class FeatureSelectionSummary(BaseModel):
     method_used: str
     skipped: bool
     skip_reason: Optional[str] = None
+    feature_stats: list[FeatureStatEntry] = []
 
 
 class CleanAssayData(BaseModel):
@@ -86,3 +94,70 @@ class ValidationResponse(BaseModel):
     arms_config: ArmsConfig
     clean_data: Optional[dict[str, CleanAssayData]] = None
     summary: str
+
+
+# ── Analysis models ────────────────────────────────────────────────────────────
+
+class FeatureCitation(BaseModel):
+    name: str
+    rho: Optional[float] = None
+    p_value: Optional[float] = None
+    direction: str = "na"  # positive | negative | na
+
+
+class ResearchRef(BaseModel):
+    citation: str
+    relevance: str
+
+
+class AnalysisFinding(BaseModel):
+    id: str
+    title: str
+    assay: str
+    category: str  # immune_effector | cytokine_signature | gene_expression | immune_suppression | immune_exclusion | other
+    features_cited: list[FeatureCitation]
+    interpretation: str
+    clinical_implication: str
+    confidence: str  # high | medium | low
+    confidence_rationale: str
+    research_refs: list[ResearchRef]
+
+
+class CrossAssayTheme(BaseModel):
+    theme: str
+    description: str
+    supporting_findings: list[str]
+
+
+class AnalysisResponse(BaseModel):
+    findings: list[AnalysisFinding]
+    cross_assay_themes: list[CrossAssayTheme]
+    overall_interpretation: str
+
+
+class AnalyzeRequest(BaseModel):
+    clean_data: dict[str, Any]
+    arms_config: ArmsConfig
+
+
+class SummaryRequest(BaseModel):
+    findings: list[AnalysisFinding]
+    approved_ids: list[str]
+    overall_interpretation: str
+    cross_assay_themes: list[CrossAssayTheme]
+    arms_config: ArmsConfig
+
+
+class SummarySection(BaseModel):
+    heading: str
+    content: str
+    finding_ids: list[str] = []
+
+
+class SummaryResponse(BaseModel):
+    title: str
+    executive_summary: str
+    sections: list[SummarySection]
+    conclusions: list[str]
+    limitations: str
+    methodology_note: str

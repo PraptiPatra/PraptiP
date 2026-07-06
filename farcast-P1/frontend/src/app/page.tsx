@@ -4,16 +4,25 @@ import {
   Activity, ChevronRight, Loader2,
   CheckCircle2, XCircle, FlaskConical,
   Microscope, TestTube2, Waves, Dna, ClipboardList,
+  Brain,
 } from "lucide-react";
 import FileUpload from "@/components/FileUpload";
 import ArmsMapper from "@/components/ArmsMapper";
 import ValidationPanel from "@/components/ValidationPanel";
 import OutputPanel from "@/components/OutputPanel";
+import AnalysisPanel from "@/components/AnalysisPanel";
 import {
   validateFile, DEFAULT_ARMS_CONFIG, ValidationResponse, ArmsConfig,
 } from "@/lib/api";
 
-type Step = "upload" | "validating" | "results";
+type Step = "upload" | "validating" | "results" | "analysis";
+
+const BREADCRUMB_LABELS: Record<Step, string> = {
+  upload: "Configure",
+  validating: "Processing",
+  results: "Results",
+  analysis: "Analysis",
+};
 
 export default function Home() {
   const [file, setFile] = useState<File | null>(null);
@@ -46,6 +55,9 @@ export default function Home() {
     setStep("upload");
   };
 
+  const isAnalysisStep = step === "analysis";
+  const BREADCRUMB_STEPS: Step[] = ["upload", "validating", "results", "analysis"];
+
   return (
     <div className="min-h-screen flex flex-col" style={{ background: "var(--background)" }}>
       {/* ── Topbar ── */}
@@ -65,20 +77,19 @@ export default function Home() {
               Farcast TiME
             </span>
             <span className="ml-2 text-xs" style={{ color: "var(--text-muted)" }}>
-              Assay Validation Engine · M1
+              Assay Validation &amp; LLM Analysis Engine
             </span>
           </div>
         </div>
         <div className="flex items-center gap-2">
-          {/* Step breadcrumb */}
-          {(["upload", "validating", "results"] as Step[]).map((s, i) => (
+          {BREADCRUMB_STEPS.filter(s => s !== "validating").map((s, i, arr) => (
             <div key={s} className="flex items-center gap-2">
               {i > 0 && <ChevronRight className="h-3 w-3" style={{ color: "var(--text-muted)" }} />}
               <span
                 className="text-xs font-medium"
                 style={{ color: step === s ? "var(--accent)" : "var(--text-muted)" }}
               >
-                {s === "upload" ? "Configure" : s === "validating" ? "Processing" : "Results"}
+                {BREADCRUMB_LABELS[s]}
               </span>
             </div>
           ))}
@@ -131,7 +142,7 @@ export default function Home() {
           <FileUpload
             file={file}
             onChange={setFile}
-            disabled={step === "validating"}
+            disabled={step === "validating" || isAnalysisStep}
           />
 
           {/* Arms mapper */}
@@ -140,7 +151,7 @@ export default function Home() {
             onChange={setArmsConfig}
             useFeatureSelection={useFeatureSelection}
             onFeatureSelectionChange={setUseFeatureSelection}
-            disabled={step === "validating"}
+            disabled={step === "validating" || isAnalysisStep}
           />
 
           {/* Error */}
@@ -155,41 +166,58 @@ export default function Home() {
           )}
 
           {/* Action buttons */}
-          <div className="flex gap-3">
-            <button
-              onClick={handleRun}
-              disabled={!file || step === "validating"}
-              className="flex-1 flex items-center justify-center gap-2 rounded-xl py-3 text-sm font-semibold transition-all disabled:opacity-40 disabled:cursor-not-allowed"
-              style={{
-                background: "var(--accent)",
-                color: "#fff",
-              }}
-            >
-              {step === "validating" ? (
-                <>
-                  <Loader2 className="h-4 w-4 spin" />
-                  Validating…
-                </>
-              ) : (
-                <>
-                  <FlaskConical className="h-4 w-4" />
-                  Run Validation
-                </>
-              )}
-            </button>
-            {step === "results" && (
+          <div className="flex flex-col gap-3">
+            <div className="flex gap-3">
               <button
-                onClick={handleReset}
-                className="rounded-xl px-4 py-3 text-sm font-medium border transition-colors hover:bg-white/[0.04]"
-                style={{ borderColor: "var(--border)", color: "var(--text-secondary)" }}
+                onClick={handleRun}
+                disabled={!file || step === "validating" || isAnalysisStep}
+                className="flex-1 flex items-center justify-center gap-2 rounded-xl py-3 text-sm font-semibold transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+                style={{ background: "var(--accent)", color: "#fff" }}
               >
-                Reset
+                {step === "validating" ? (
+                  <>
+                    <Loader2 className="h-4 w-4 spin" />
+                    Validating…
+                  </>
+                ) : (
+                  <>
+                    <FlaskConical className="h-4 w-4" />
+                    Run Validation
+                  </>
+                )}
+              </button>
+              {(step === "results" || isAnalysisStep) && (
+                <button
+                  onClick={handleReset}
+                  className="rounded-xl px-4 py-3 text-sm font-medium border transition-colors hover:bg-white/[0.04]"
+                  style={{ borderColor: "var(--border)", color: "var(--text-secondary)" }}
+                >
+                  Reset
+                </button>
+              )}
+            </div>
+
+            {/* Run Analysis button — shown in results step */}
+            {step === "results" && result?.clean_data && result.overall_passed && (
+              <button
+                onClick={() => setStep("analysis")}
+                className="w-full flex items-center justify-center gap-2 rounded-xl py-3 text-sm font-semibold border transition-all hover:bg-blue-500/10"
+                style={{ borderColor: "var(--accent)", color: "var(--accent)", background: "rgba(59,130,246,0.06)" }}
+              >
+                <Brain className="h-4 w-4" />
+                Run LLM Analysis
+                <span
+                  className="ml-1 rounded px-1.5 py-0.5 text-[10px] font-mono"
+                  style={{ background: "rgba(59,130,246,0.15)", color: "var(--accent)" }}
+                >
+                  claude-opus-4-8
+                </span>
               </button>
             )}
           </div>
         </aside>
 
-        {/* ── Right panel: results ── */}
+        {/* ── Right panel: results / analysis ── */}
         <section className="flex-1 flex flex-col min-w-0">
           {step === "upload" && (
             <div className="flex-1 flex flex-col items-center justify-center p-12 text-center">
@@ -212,9 +240,7 @@ export default function Home() {
           {step === "validating" && (
             <div className="flex-1 flex flex-col items-center justify-center gap-5 p-12">
               <div className="relative flex h-16 w-16 items-center justify-center">
-                <div
-                  className="absolute inset-0 rounded-full border-2 border-blue-500/20"
-                />
+                <div className="absolute inset-0 rounded-full border-2 border-blue-500/20" />
                 <Loader2 className="h-7 w-7 spin" style={{ color: "var(--accent)" }} />
               </div>
               <div className="text-center">
@@ -225,14 +251,10 @@ export default function Home() {
                   Checking schemas, values, and cross-assay alignment
                 </p>
               </div>
-              {/* Progress stages */}
               <div className="space-y-2 w-64">
-                {["Schema validation", "Value checks", "Sample alignment", "Formatting output"].map((s, i) => (
+                {["Schema validation", "Value checks", "Sample alignment", "Formatting output"].map((s) => (
                   <div key={s} className="flex items-center gap-2.5">
-                    <div
-                      className="h-1.5 w-1.5 rounded-full"
-                      style={{ background: "var(--accent)" }}
-                    />
+                    <div className="h-1.5 w-1.5 rounded-full" style={{ background: "var(--accent)" }} />
                     <span className="text-xs" style={{ color: "var(--text-secondary)" }}>{s}</span>
                   </div>
                 ))}
@@ -243,10 +265,7 @@ export default function Home() {
           {step === "results" && result && (
             <div className="flex-1 flex flex-col min-h-0">
               {/* Tab bar */}
-              <div
-                className="flex gap-1 px-6 pt-4 border-b"
-                style={{ borderColor: "var(--border)" }}
-              >
+              <div className="flex gap-1 px-6 pt-4 border-b" style={{ borderColor: "var(--border)" }}>
                 {(["validation", "output"] as const).map((tab) => (
                   <button
                     key={tab}
@@ -285,7 +304,6 @@ export default function Home() {
                 ))}
               </div>
 
-              {/* Tab content */}
               <div className="flex-1 overflow-y-auto p-6">
                 {activeTab === "validation" && <ValidationPanel data={result} />}
                 {activeTab === "output" && result.clean_data && (
@@ -298,6 +316,14 @@ export default function Home() {
                 )}
               </div>
             </div>
+          )}
+
+          {step === "analysis" && result?.clean_data && (
+            <AnalysisPanel
+              cleanData={result.clean_data}
+              armsConfig={result.arms_config}
+              onBack={() => setStep("results")}
+            />
           )}
         </section>
       </main>
