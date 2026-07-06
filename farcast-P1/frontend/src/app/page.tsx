@@ -18,6 +18,7 @@ type Step = "upload" | "validating" | "results";
 export default function Home() {
   const [file, setFile] = useState<File | null>(null);
   const [armsConfig, setArmsConfig] = useState<ArmsConfig>(DEFAULT_ARMS_CONFIG);
+  const [useFeatureSelection, setUseFeatureSelection] = useState(true);
   const [step, setStep] = useState<Step>("upload");
   const [result, setResult] = useState<ValidationResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -29,7 +30,7 @@ export default function Home() {
     setError(null);
     setResult(null);
     try {
-      const res = await validateFile(file, armsConfig);
+      const res = await validateFile(file, armsConfig, useFeatureSelection);
       setResult(res);
       setStep("results");
     } catch (e) {
@@ -137,6 +138,8 @@ export default function Home() {
           <ArmsMapper
             config={armsConfig}
             onChange={setArmsConfig}
+            useFeatureSelection={useFeatureSelection}
+            onFeatureSelectionChange={setUseFeatureSelection}
             disabled={step === "validating"}
           />
 

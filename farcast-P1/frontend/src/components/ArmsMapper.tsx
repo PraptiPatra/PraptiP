@@ -1,6 +1,6 @@
 "use client";
 import { ArmsConfig } from "@/lib/api";
-import { Settings2 } from "lucide-react";
+import { Settings2, Sliders } from "lucide-react";
 
 const ASSAY_LABELS: Record<string, string> = {
   histopathology: "H&E + IHC",
@@ -14,6 +14,8 @@ const ALL_ARMS = ["Rx-A", "Rx-B", "Rx-C", "Arm-1"];
 interface Props {
   config: ArmsConfig;
   onChange: (c: ArmsConfig) => void;
+  useFeatureSelection: boolean;
+  onFeatureSelectionChange: (v: boolean) => void;
   disabled?: boolean;
 }
 
@@ -25,7 +27,7 @@ const selStyle = {
   color: "var(--text-primary)",
 };
 
-export default function ArmsMapper({ config, onChange, disabled }: Props) {
+export default function ArmsMapper({ config, onChange, useFeatureSelection, onFeatureSelectionChange, disabled }: Props) {
   const setControl = (v: string) =>
     onChange({
       ...config,
@@ -103,6 +105,43 @@ export default function ArmsMapper({ config, onChange, disabled }: Props) {
             ))}
           </div>
         </div>
+      </div>
+
+      {/* Feature selection toggle */}
+      <div
+        className="flex items-center justify-between rounded-lg border px-4 py-3"
+        style={{ borderColor: "var(--border)", background: "rgba(255,255,255,0.02)" }}
+      >
+        <div className="flex items-center gap-2.5">
+          <Sliders className="h-4 w-4 flex-shrink-0" style={{ color: "var(--accent)" }} />
+          <div>
+            <p className="text-xs font-medium" style={{ color: "var(--text-primary)" }}>
+              Feature Selection
+            </p>
+            <p className="text-[11px] mt-0.5" style={{ color: "var(--text-muted)" }}>
+              Spearman correlation · p ≤ 0.08 · top-20 fallback
+            </p>
+          </div>
+        </div>
+        <button
+          type="button"
+          role="switch"
+          aria-checked={useFeatureSelection}
+          onClick={() => !disabled && onFeatureSelectionChange(!useFeatureSelection)}
+          className="relative inline-flex h-5 w-9 flex-shrink-0 rounded-full border-2 border-transparent transition-colors duration-200 focus:outline-none"
+          style={{
+            background: useFeatureSelection ? "var(--accent)" : "var(--border)",
+            cursor: disabled ? "not-allowed" : "pointer",
+          }}
+        >
+          <span
+            className="pointer-events-none inline-block h-4 w-4 rounded-full shadow transition-transform duration-200"
+            style={{
+              background: "white",
+              transform: useFeatureSelection ? "translateX(16px)" : "translateX(0px)",
+            }}
+          />
+        </button>
       </div>
 
       {/* Timepoints per assay */}

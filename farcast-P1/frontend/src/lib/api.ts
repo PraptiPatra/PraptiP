@@ -34,6 +34,15 @@ export interface ArmsConfig {
   post_treatment_timepoints: Record<string, string>;
 }
 
+export interface FeatureSelectionSummary {
+  selected_features: string[];
+  total_features: number;
+  selected_count: number;
+  method_used: "spearman_pvalue" | "spearman_top_n" | "sd_threshold" | "sd_top_n" | "passthrough";
+  skipped: boolean;
+  skip_reason?: string;
+}
+
 export interface CleanAssayData {
   assay_name: string;
   display_name: string;
@@ -41,6 +50,7 @@ export interface CleanAssayData {
   columns: string[];
   rows: Record<string, unknown>[];
   metadata: Record<string, unknown>;
+  feature_selection?: FeatureSelectionSummary;
 }
 
 export interface ValidationResponse {
@@ -57,11 +67,13 @@ export interface ValidationResponse {
 
 export async function validateFile(
   file: File,
-  armsConfig: ArmsConfig
+  armsConfig: ArmsConfig,
+  useFeatureSelection: boolean = true
 ): Promise<ValidationResponse> {
   const formData = new FormData();
   formData.append("file", file);
   formData.append("arms_config_json", JSON.stringify(armsConfig));
+  formData.append("use_feature_selection", String(useFeatureSelection));
 
   const res = await fetch(`${API_BASE}/api/validate`, {
     method: "POST",
