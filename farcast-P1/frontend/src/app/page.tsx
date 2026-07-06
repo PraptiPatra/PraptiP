@@ -282,7 +282,7 @@ export default function Home() {
                         Ready for LLM Analysis
                       </p>
                       <p className="text-xs" style={{ color: "var(--text-muted)" }}>
-                        Run Claude claude-opus-4-8 to extract immunological findings with research citations
+                        Run Sarvam-M to extract immunological findings with research citations
                       </p>
                     </div>
                   </div>

@@ -1,16 +1,20 @@
 """
-LLM analyzer — builds structured prompts from clean assay data and calls Claude claude-opus-4-8.
+LLM analyzer — builds structured prompts from clean assay data and calls Sarvam AI.
+Uses OpenAI-compatible client pointed at api.sarvam.ai.
 """
 
 import os
 import json
 import re
-import anthropic
+from openai import OpenAI
 
 from models.schemas import (
     AnalysisFinding, AnalysisResponse, CrossAssayTheme, FeatureCitation, ResearchRef,
     SummaryRequest, SummaryResponse, SummarySection, ArmsConfig,
 )
+
+SARVAM_BASE_URL = "https://api.sarvam.ai/v1"
+SARVAM_MODEL = "sarvam-m"
 
 ASSAY_DISPLAY = {
     "histopathology": "Histopathology (H&E + IHC)",
@@ -19,25 +23,15 @@ ASSAY_DISPLAY = {
     "nanostring": "NanoString Gene Expression",
 }
 
-CATEGORY_LABELS = {
-    "immune_effector": "Immune Effector",
-    "cytokine_signature": "Cytokine Signature",
-    "gene_expression": "Gene Expression",
-    "immune_suppression": "Immune Suppression",
-    "immune_exclusion": "Immune Exclusion",
-    "other": "Other",
-}
 
-
-def _get_client() -> anthropic.Anthropic:
-    api_key = os.environ.get("ANTHROPIC_API_KEY")
+def _get_client() -> OpenAI:
+    api_key = os.environ.get("SARVAM_API_KEY")
     if not api_key:
-        raise ValueError("ANTHROPIC_API_KEY environment variable is not set")
-    return anthropic.Anthropic(api_key=api_key)
+        raise ValueError("SARVAM_API_KEY environment variable is not set")
+    return OpenAI(api_key=api_key, base_url=SARVAM_BASE_URL)
 
 
 def _format_feature_table(feature_stats: list[dict], max_rows: int = 60) -> str:
-    """Render feature stats as a compact markdown table."""
     rows = feature_stats[:max_rows]
     if not rows:
         return "  (no feature statistics available)"
@@ -61,20 +55,18 @@ def _format_feature_table(feature_stats: list[dict], max_rows: int = 60) -> str:
 
 def _build_analysis_prompt(clean_data: dict, arms_config: ArmsConfig) -> str:
     sections = []
-
     sections.append(f"""## Study Design
 - **Cohort**: n=16 patients (Farcast TruTumor study)
 - **Control arm**: {arms_config.control_arm}
 - **Treatment arms**: {', '.join(arms_config.treated_arms)}
 - **Response categories**: R (Responder, ordinal=2), MR (Mixed Responder, ordinal=1), NR (Non-Responder, ordinal=0)
-- **Feature selection**: Spearman rank correlation matrix method — all assay feature columns + response label column in one matrix; features selected at p ≤ 0.08 (fallback: top-20 by |ρ|)
+- **Feature selection**: Spearman rank correlation matrix — features selected at p ≤ 0.08 (fallback: top-20 by |ρ|)
 """)
 
     for assay_key, assay_data in clean_data.items():
         display = ASSAY_DISPLAY.get(assay_key, assay_key)
         n_samples = assay_data.get("n_samples", "?")
         fs = assay_data.get("feature_selection")
-        meta = assay_data.get("metadata", {})
 
         header = f"### {display} ({n_samples} samples)"
 
@@ -92,7 +84,6 @@ def _build_analysis_prompt(clean_data: dict, arms_config: ArmsConfig) -> str:
             header += f"\n- Feature selection: {method_label} → {selected}/{total} features retained"
             if fs.get("skip_reason"):
                 header += f"\n- Note: {fs['skip_reason']}"
-
             stats = fs.get("feature_stats", [])
             if stats:
                 header += f"\n\n**Selected features with response correlation (Spearman ρ vs R/MR/NR):**\n"
@@ -100,7 +91,7 @@ def _build_analysis_prompt(clean_data: dict, arms_config: ArmsConfig) -> str:
         else:
             cols = assay_data.get("columns", [])
             bio_cols = [c for c in cols if c not in {"Sample_ID", "Arms", "Timepoint", "Response"}]
-            header += f"\n- Features: {len(bio_cols)} columns (no feature selection applied)"
+            header += f"\n- Features: {len(bio_cols)} columns"
             if bio_cols:
                 header += f"\n- Columns: {', '.join(bio_cols[:30])}"
                 if len(bio_cols) > 30:
@@ -112,12 +103,9 @@ def _build_analysis_prompt(clean_data: dict, arms_config: ArmsConfig) -> str:
 
 
 def _extract_json(text: str) -> dict:
-    """Extract JSON object from model response, handling markdown code blocks."""
-    # Try to find ```json ... ``` block
     match = re.search(r"```(?:json)?\s*(\{.*?\})\s*```", text, re.DOTALL)
     if match:
         return json.loads(match.group(1))
-    # Try raw JSON object
     match = re.search(r"(\{.*\})", text, re.DOTALL)
     if match:
         return json.loads(match.group(1))
@@ -230,22 +218,17 @@ Return ONLY a valid JSON object in exactly this format (no text before or after)
 
 Generate 6-10 findings covering the most important patterns. Include 2-3 cross-assay themes. Each finding must cite at least 2 published references."""
 
-    with client.messages.stream(
-        model="claude-opus-4-8",
+    response = client.chat.completions.create(
+        model=SARVAM_MODEL,
+        messages=[
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": user_prompt},
+        ],
         max_tokens=8000,
-        thinking={"type": "adaptive"},
-        system=system_prompt,
-        messages=[{"role": "user", "content": user_prompt}],
-    ) as stream:
-        response = stream.get_final_message()
+        temperature=0.2,
+    )
 
-    # Extract text content (skip thinking blocks)
-    text_content = ""
-    for block in response.content:
-        if hasattr(block, "text"):
-            text_content = block.text
-            break
-
+    text_content = response.choices[0].message.content or ""
     raw = _extract_json(text_content)
     return _parse_analysis_response(raw)
 
@@ -287,22 +270,22 @@ Write with precision, clarity, and appropriate scientific caution. Structure the
 ## CROSS-ASSAY THEMES:
 {themes_text}
 
-## OVERALL INTERPRETATION (from initial analysis):
+## OVERALL INTERPRETATION:
 {request.overall_interpretation}
 
 ## STUDY ARMS:
 - Control: {request.arms_config.control_arm}
 - Treatment: {', '.join(request.arms_config.treated_arms)}
 
-Generate a structured clinical summary report. Return ONLY valid JSON:
+Return ONLY valid JSON:
 
 {{
-  "title": "Farcast TruTumor TiME Analysis Report — [brief subtitle capturing main finding]",
+  "title": "Farcast TruTumor TiME Analysis Report — [brief subtitle]",
   "executive_summary": "3-4 sentence high-level summary of the most critical findings and their implications for treatment response prediction.",
   "sections": [
     {{
       "heading": "Section title",
-      "content": "Detailed section content (3-5 sentences). Synthesize the approved findings into a coherent narrative. Do not just list findings — integrate them mechanistically.",
+      "content": "Detailed section content (3-5 sentences). Synthesize the approved findings into a coherent narrative.",
       "finding_ids": ["f1", "f2"]
     }}
   ],
@@ -311,27 +294,23 @@ Generate a structured clinical summary report. Return ONLY valid JSON:
     "Conclusion 2: ...",
     "Conclusion 3: ..."
   ],
-  "limitations": "1-2 sentences on study limitations (small cohort n=16, exploratory nature, etc.).",
-  "methodology_note": "Brief note on the feature selection approach (Spearman rank correlation matrix method) and its relevance to the findings."
+  "limitations": "1-2 sentences on study limitations.",
+  "methodology_note": "Brief note on the Spearman rank correlation matrix feature selection method."
 }}
 
-Include 4-6 sections covering: immune effector mechanisms, suppressive biology, key biomarkers, cross-assay convergence, and clinical implications. Each section should synthesize multiple findings thematically."""
+Include 4-6 sections covering: immune effector mechanisms, suppressive biology, key biomarkers, cross-assay convergence, and clinical implications."""
 
-    with client.messages.stream(
-        model="claude-opus-4-8",
+    response = client.chat.completions.create(
+        model=SARVAM_MODEL,
+        messages=[
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": user_prompt},
+        ],
         max_tokens=5000,
-        thinking={"type": "adaptive"},
-        system=system_prompt,
-        messages=[{"role": "user", "content": user_prompt}],
-    ) as stream:
-        response = stream.get_final_message()
+        temperature=0.2,
+    )
 
-    text_content = ""
-    for block in response.content:
-        if hasattr(block, "text"):
-            text_content = block.text
-            break
-
+    text_content = response.choices[0].message.content or ""
     raw = _extract_json(text_content)
 
     sections = [

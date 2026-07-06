@@ -201,7 +201,7 @@ export default function AnalysisPanel({ cleanData, armsConfig, onBack }: Props) 
                   Analyzing with Claude claude-opus-4-8…
                 </p>
                 <p className="text-xs mt-1" style={{ color: "var(--text-muted)" }}>
-                  Identifying immunological patterns and generating research-backed findings
+                  Sarvam-M · identifying immunological patterns and generating research-backed findings
                 </p>
               </div>
               <ProgressDots stages={ANALYSIS_STAGES} current={loadingStage} />
