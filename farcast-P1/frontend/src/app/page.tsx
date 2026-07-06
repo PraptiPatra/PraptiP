@@ -197,8 +197,8 @@ export default function Home() {
               )}
             </div>
 
-            {/* Run Analysis button — shown in results step */}
-            {step === "results" && result?.clean_data && result.overall_passed && (
+            {/* Run Analysis button — shown whenever clean_data exists */}
+            {step === "results" && result?.clean_data && (
               <button
                 onClick={() => setStep("analysis")}
                 className="w-full flex items-center justify-center gap-2 rounded-xl py-3 text-sm font-semibold border transition-all hover:bg-blue-500/10"
