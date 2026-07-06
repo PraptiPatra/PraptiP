@@ -77,7 +77,7 @@ export default function Home() {
               Farcast TiME
             </span>
             <span className="ml-2 text-xs" style={{ color: "var(--text-muted)" }}>
-              Assay Validation &amp; LLM Analysis Engine
+              Assay Validation &amp; LLM Analysis · M2
             </span>
           </div>
         </div>
@@ -264,6 +264,39 @@ export default function Home() {
 
           {step === "results" && result && (
             <div className="flex-1 flex flex-col min-h-0">
+              {/* ── LLM Analysis CTA banner ── */}
+              {result.clean_data && (
+                <div
+                  className="mx-6 mt-4 rounded-xl border px-5 py-4 flex items-center justify-between gap-4"
+                  style={{ background: "rgba(59,130,246,0.07)", borderColor: "rgba(59,130,246,0.35)" }}
+                >
+                  <div className="flex items-center gap-3">
+                    <div
+                      className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg"
+                      style={{ background: "rgba(59,130,246,0.15)" }}
+                    >
+                      <Brain className="h-5 w-5" style={{ color: "var(--accent)" }} />
+                    </div>
+                    <div>
+                      <p className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>
+                        Ready for LLM Analysis
+                      </p>
+                      <p className="text-xs" style={{ color: "var(--text-muted)" }}>
+                        Run Claude claude-opus-4-8 to extract immunological findings with research citations
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => setStep("analysis")}
+                    className="flex-shrink-0 flex items-center gap-2 rounded-xl px-5 py-2.5 text-sm font-semibold transition-all hover:opacity-90"
+                    style={{ background: "var(--accent)", color: "#fff" }}
+                  >
+                    <Brain className="h-4 w-4" />
+                    Run LLM Analysis
+                  </button>
+                </div>
+              )}
+
               {/* Tab bar */}
               <div className="flex gap-1 px-6 pt-4 border-b" style={{ borderColor: "var(--border)" }}>
                 {(["validation", "output"] as const).map((tab) => (
