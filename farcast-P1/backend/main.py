@@ -13,6 +13,7 @@ from validators.schema_validator import ASSAY_SCHEMAS, validate_schema
 from validators.value_validator import validate_values
 from validators.sample_aligner import align_samples
 from formatters.assay_formatter import format_assay
+from formatters.feature_selector import RESPONSE_ORDER
 
 app = FastAPI(
     title="Farcast TiME Assay Validation API",
@@ -31,15 +32,34 @@ app.add_middleware(
 SHEET_TO_ASSAY = {schema["sheet"]: key for key, schema in ASSAY_SCHEMAS.items()}
 
 
-def _load_assay_dfs(file_bytes: bytes) -> dict[str, pd.DataFrame]:
-    """Load all recognised assay sheets from the Excel file."""
+METADATA_SHEET_NAMES = {"Metadata_n=16", "Metadata", "metadata"}
+
+
+def _load_assay_dfs(file_bytes: bytes) -> tuple[dict[str, pd.DataFrame], dict]:
+    """Load all recognised assay sheets and optional Metadata sheet."""
     xl = pd.ExcelFile(io.BytesIO(file_bytes))
     loaded: dict[str, pd.DataFrame] = {}
     for sheet in xl.sheet_names:
         if sheet in SHEET_TO_ASSAY:
-            assay_key = SHEET_TO_ASSAY[sheet]
-            loaded[assay_key] = xl.parse(sheet)
-    return loaded
+            loaded[SHEET_TO_ASSAY[sheet]] = xl.parse(sheet)
+
+    # Load Metadata sheet if present — keyed by (Sample_ID, Arms) → ordinal response
+    response_map: dict = {}
+    for sheet in xl.sheet_names:
+        if sheet in METADATA_SHEET_NAMES:
+            meta_df = xl.parse(sheet)
+            if "Sample_ID" in meta_df.columns and "Response" in meta_df.columns:
+                for _, row in meta_df.iterrows():
+                    resp_raw = str(row["Response"]).strip()
+                    ordinal = RESPONSE_ORDER.get(resp_raw)
+                    if ordinal is None:
+                        continue
+                    arm = str(row.get("Arms", "")).strip()
+                    key = (str(row["Sample_ID"]).strip(), arm) if arm else str(row["Sample_ID"]).strip()
+                    response_map[key] = ordinal
+            break
+
+    return loaded, response_map
 
 
 @app.get("/health")
@@ -68,7 +88,7 @@ async def validate_file(
 
     file_bytes = await file.read()
     try:
-        assay_dfs = _load_assay_dfs(file_bytes)
+        assay_dfs, response_map = _load_assay_dfs(file_bytes)
     except Exception as e:
         raise HTTPException(status_code=422, detail=f"Could not parse Excel file: {e}")
 
@@ -94,12 +114,16 @@ async def validate_file(
     )
 
     # ── Clean data formatter ───────────────────────────────────────────────
+    # Pass response_map as a pd.Series so format_assay can align it via .get()
+    response_series = pd.Series(response_map) if response_map else None
+
     clean_data: dict[str, CleanAssayData] = {}
     for assay_key, df in assay_dfs.items():
         try:
             clean_data[assay_key] = format_assay(
                 assay_key, df, arms_config,
                 use_feature_selection=use_feature_selection,
+                response_series=response_series,
             )
         except Exception as e:
             pass  # formatter failure should not block validation response

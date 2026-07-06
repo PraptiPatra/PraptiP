@@ -95,10 +95,22 @@ def format_assay(
         # Use only post-treatment rows for correlation (not baseline)
         df_post = df_out[df_out["Timepoint"] == post_tp].copy() if "Timepoint" in df_out.columns else df_out.copy()
 
-        # Align response_series index to Sample_ID if provided
+        # Align response_series to df_post rows.
+        # response_series may be a dict/Series keyed by (Sample_ID, Arms) tuples or Sample_ID strings.
         aligned_response = None
-        if response_series is not None and "Sample_ID" in df_post.columns:
-            aligned_response = df_post["Sample_ID"].map(response_series)
+        if response_series is not None:
+            if "Sample_ID" in df_post.columns and "Arms" in df_post.columns:
+                composite = list(zip(df_post["Sample_ID"], df_post["Arms"]))
+                mapped = pd.Series(
+                    [response_series.get(k, np.nan) for k in composite],
+                    index=df_post.index,
+                )
+                if mapped.notna().sum() >= 4:
+                    aligned_response = mapped
+                else:
+                    aligned_response = df_post["Sample_ID"].map(response_series)
+            elif "Sample_ID" in df_post.columns:
+                aligned_response = df_post["Sample_ID"].map(response_series)
 
         fs_result = select_features(
             assay_key=assay_key,
