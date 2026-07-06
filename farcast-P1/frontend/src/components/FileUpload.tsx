@@ -1,6 +1,6 @@
 "use client";
 import { useCallback, useState } from "react";
-import { Upload, FileSpreadsheet, X } from "lucide-react";
+import { Upload, FileSpreadsheet, X, CircleCheck as CheckCircle2 } from "lucide-react";
 import clsx from "clsx";
 
 interface Props {
@@ -39,8 +39,9 @@ export default function FileUpload({ file, onChange, disabled }: Props) {
 
   return (
     <div className="space-y-3">
-      <label className="block text-sm font-medium" style={{ color: "var(--text-secondary)" }}>
-        Assay Database <span className="text-xs font-normal">(Excel .xlsx)</span>
+      <label className="block text-sm font-semibold" style={{ color: "var(--text-primary)" }}>
+        Assay Database
+        <span className="text-xs font-normal ml-1 badge badge-accent">.xlsx</span>
       </label>
 
       {!file ? (
@@ -49,27 +50,42 @@ export default function FileUpload({ file, onChange, disabled }: Props) {
           onDragLeave={() => setDragging(false)}
           onDrop={handleDrop}
           className={clsx(
-            "relative flex flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed p-10 transition-all cursor-pointer",
+            "relative flex flex-col items-center justify-center gap-4 rounded-2xl border-2 border-dashed p-12 transition-all cursor-pointer",
             dragging
-              ? "border-blue-500 bg-blue-500/5"
-              : "border-[var(--border)] hover:border-blue-500/50 hover:bg-[var(--surface-raised)]",
+              ? "border-[var(--accent)] bg-[var(--accent-bg)]"
+              : "border-[var(--border-dashed,var(--border))] hover:border-[var(--accent)] hover:bg-[var(--surface-hover)]",
             disabled && "opacity-50 pointer-events-none"
           )}
+          style={{ background: dragging ? "var(--accent-bg)" : "var(--surface)" }}
           onClick={() => document.getElementById("file-input")?.click()}
         >
           <div
-            className="flex h-14 w-14 items-center justify-center rounded-full"
-            style={{ background: "var(--surface-raised)" }}
+            className="flex h-16 w-16 items-center justify-center rounded-2xl transition-all"
+            style={{
+              background: dragging ? "var(--accent-light)" : "var(--accent-bg)",
+              boxShadow: dragging ? "0 8px 24px rgba(124, 158, 178, 0.2)" : "none"
+            }}
           >
-            <Upload className="h-6 w-6" style={{ color: "var(--accent)" }} />
+            <Upload
+              className="h-6 w-6 transition-transform"
+              style={{ color: "var(--accent)", transform: dragging ? "translateY(-2px)" : "none" }}
+            />
           </div>
           <div className="text-center">
-            <p className="text-sm font-medium" style={{ color: "var(--text-primary)" }}>
-              Drop your Excel file here
+            <p className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>
+              {dragging ? "Drop file here" : "Drop your Excel file here"}
             </p>
-            <p className="text-xs mt-1" style={{ color: "var(--text-muted)" }}>
-              or click to browse — .xlsx containing all 5 assay sheets
+            <p className="text-sm mt-1.5" style={{ color: "var(--text-muted)" }}>
+              or click to browse
             </p>
+          </div>
+          <div className="flex gap-2 mt-2">
+            <span className="text-[11px] px-3 py-1 rounded-full" style={{ background: "var(--background-alt)", color: "var(--text-muted)" }}>
+              Multi-sheet
+            </span>
+            <span className="text-[11px] px-3 py-1 rounded-full" style={{ background: "var(--background-alt)", color: "var(--text-muted)" }}>
+              All assays
+            </span>
           </div>
           <input
             id="file-input"
@@ -81,30 +97,30 @@ export default function FileUpload({ file, onChange, disabled }: Props) {
         </div>
       ) : (
         <div
-          className="flex items-center gap-4 rounded-xl border p-4"
-          style={{ background: "var(--surface-raised)", borderColor: "var(--border)" }}
+          className="card-premium flex items-center gap-4 p-4 animate-fade-in"
         >
           <div
-            className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-lg"
-            style={{ background: "rgba(59,130,246,0.1)" }}
+            className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-xl"
+            style={{ background: "var(--success-bg)" }}
           >
-            <FileSpreadsheet className="h-5 w-5" style={{ color: "var(--accent)" }} />
+            <CheckCircle2 className="h-6 w-6" style={{ color: "var(--success)" }} />
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium truncate" style={{ color: "var(--text-primary)" }}>
+            <p className="text-sm font-semibold truncate" style={{ color: "var(--text-primary)" }}>
               {file.name}
             </p>
-            <p className="text-xs mt-0.5" style={{ color: "var(--text-muted)" }}>
-              {fmt(file.size)}
+            <p className="text-xs mt-1 font-mono" style={{ color: "var(--text-muted)" }}>
+              {fmt(file.size)} · Ready for validation
             </p>
           </div>
           {!disabled && (
             <button
               onClick={() => onChange(null)}
-              className="flex-shrink-0 rounded-lg p-1.5 transition-colors hover:bg-red-500/10"
+              className="flex-shrink-0 rounded-xl p-2.5 transition-all hover:scale-105"
+              style={{ background: "var(--error-bg)" }}
               title="Remove file"
             >
-              <X className="h-4 w-4" style={{ color: "var(--text-muted)" }} />
+              <X className="h-4 w-4" style={{ color: "var(--error)" }} />
             </button>
           )}
         </div>

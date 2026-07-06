@@ -1,5 +1,5 @@
 "use client";
-import { Download, FileText, CheckCircle2, AlertTriangle, FlaskConical, BookOpen } from "lucide-react";
+import { Download, FileText, CircleCheck as CheckCircle2, TriangleAlert as AlertTriangle, FlaskConical, BookOpen } from "lucide-react";
 import { SummaryResponse, AnalysisFinding } from "@/lib/api";
 
 interface Props {
@@ -26,7 +26,7 @@ function downloadReport(summary: SummaryResponse, findings: AnalysisFinding[]) {
       if (refs.length > 0) {
         lines.push("");
         lines.push("Supporting findings:");
-        refs.forEach(f => lines.push(`  • [${f.id}] ${f.title}`));
+        refs.forEach(f => lines.push(`  * [${f.id}] ${f.title}`));
       }
     }
     lines.push("");
@@ -57,7 +57,7 @@ function downloadReport(summary: SummaryResponse, findings: AnalysisFinding[]) {
     if (f.features_cited.length > 0) {
       lines.push("  Key features:");
       f.features_cited.slice(0, 5).forEach(fc => {
-        const rhoStr = fc.rho !== null ? ` (ρ=${fc.rho >= 0 ? "+" : ""}${fc.rho.toFixed(3)}, p=${fc.p_value?.toFixed(4)})` : "";
+        const rhoStr = fc.rho !== null ? ` (p=${fc.rho >= 0 ? "+" : ""}${fc.rho.toFixed(3)}, p=${fc.p_value?.toFixed(4)})` : "";
         lines.push(`    - ${fc.name}${rhoStr}`);
       });
     }
@@ -81,33 +81,30 @@ export default function SummaryPanel({ summary, approvedFindings }: Props) {
   return (
     <div className="space-y-6 animate-fade-in">
       {/* Header */}
-      <div
-        className="rounded-xl border p-5"
-        style={{ background: "var(--surface)", borderColor: "var(--border)" }}
-      >
+      <div className="card-premium p-6">
         <div className="flex items-start justify-between gap-4">
-          <div className="flex items-start gap-3">
+          <div className="flex items-start gap-4">
             <div
-              className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl"
-              style={{ background: "rgba(59,130,246,0.15)" }}
+              className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-xl"
+              style={{ background: "var(--accent-bg)" }}
             >
-              <FileText className="h-5 w-5" style={{ color: "var(--accent)" }} />
+              <FileText className="h-6 w-6" style={{ color: "var(--accent)" }} />
             </div>
             <div>
-              <h2 className="text-base font-bold leading-snug" style={{ color: "var(--text-primary)" }}>
+              <h2 className="text-lg font-bold leading-snug" style={{ color: "var(--text-primary)" }}>
                 {summary.title}
               </h2>
-              <p className="text-xs mt-1" style={{ color: "var(--text-muted)" }}>
+              <p className="text-sm mt-1.5" style={{ color: "var(--text-muted)" }}>
                 Based on {approvedFindings.length} approved finding{approvedFindings.length !== 1 ? "s" : ""}
               </p>
             </div>
           </div>
           <button
             onClick={() => downloadReport(summary, approvedFindings)}
-            className="flex-shrink-0 flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors hover:bg-blue-500/10"
-            style={{ borderColor: "var(--accent)", color: "var(--accent)" }}
+            className="flex-shrink-0 flex items-center gap-2 rounded-xl px-5 py-2.5 text-sm font-semibold transition-all"
+            style={{ borderColor: "var(--accent)", color: "var(--accent)", background: "var(--accent-bg)", border: "2px solid var(--accent)" }}
           >
-            <Download className="h-3.5 w-3.5" />
+            <Download className="h-4 w-4" />
             Download Report
           </button>
         </div>
@@ -115,12 +112,19 @@ export default function SummaryPanel({ summary, approvedFindings }: Props) {
 
       {/* Executive summary */}
       <div
-        className="rounded-xl border p-5"
-        style={{ background: "rgba(59,130,246,0.04)", borderColor: "rgba(59,130,246,0.2)" }}
+        className="card-premium p-6"
+        style={{ background: "var(--accent-bg)", borderColor: "var(--accent-light)" }}
       >
-        <div className="flex items-center gap-2 mb-3">
-          <FlaskConical className="h-4 w-4" style={{ color: "var(--accent)" }} />
-          <h3 className="text-sm font-semibold" style={{ color: "var(--accent)" }}>Executive Summary</h3>
+        <div className="flex items-center gap-3 mb-4">
+          <div
+            className="flex h-9 w-9 items-center justify-center rounded-lg"
+            style={{ background: "var(--accent-light)" }}
+          >
+            <FlaskConical className="h-4 w-4" style={{ color: "var(--accent)" }} />
+          </div>
+          <h3 className="text-sm font-semibold uppercase tracking-wide" style={{ color: "var(--accent)" }}>
+            Executive Summary
+          </h3>
         </div>
         <p className="text-sm leading-relaxed" style={{ color: "var(--text-primary)" }}>
           {summary.executive_summary}
@@ -134,10 +138,9 @@ export default function SummaryPanel({ summary, approvedFindings }: Props) {
           return (
             <div
               key={i}
-              className="rounded-xl border p-5 space-y-3"
-              style={{ background: "var(--surface)", borderColor: "var(--border)" }}
+              className="card-premium p-5 space-y-4"
             >
-              <h3 className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>
+              <h3 className="text-base font-semibold" style={{ color: "var(--text-primary)" }}>
                 {section.heading}
               </h3>
               <p className="text-sm leading-relaxed" style={{ color: "var(--text-secondary)" }}>
@@ -148,11 +151,11 @@ export default function SummaryPanel({ summary, approvedFindings }: Props) {
                   {sectionFindings.map(f => (
                     <span
                       key={f.id}
-                      className="rounded-md border px-2.5 py-1 text-[11px] font-medium"
-                      style={{ borderColor: "rgba(74,222,128,0.3)", background: "rgba(74,222,128,0.06)", color: "#4ade80" }}
+                      className="rounded-xl px-3 py-1.5 text-xs font-medium flex items-center gap-1.5"
+                      style={{ background: "var(--success-bg)", color: "var(--success)", border: "1px solid var(--success-light)" }}
                     >
-                      <CheckCircle2 className="h-3 w-3 inline mr-1" />
-                      {f.title.length > 50 ? f.title.slice(0, 50) + "…" : f.title}
+                      <CheckCircle2 className="h-3.5 w-3.5" />
+                      {f.title.length > 50 ? f.title.slice(0, 50) + "..." : f.title}
                     </span>
                   ))}
                 </div>
@@ -163,24 +166,28 @@ export default function SummaryPanel({ summary, approvedFindings }: Props) {
       </div>
 
       {/* Key conclusions */}
-      <div
-        className="rounded-xl border p-5"
-        style={{ background: "var(--surface)", borderColor: "var(--border)" }}
-      >
-        <div className="flex items-center gap-2 mb-4">
-          <CheckCircle2 className="h-4 w-4" style={{ color: "#4ade80" }} />
-          <h3 className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>Key Conclusions</h3>
+      <div className="card-premium p-6">
+        <div className="flex items-center gap-3 mb-5">
+          <div
+            className="flex h-9 w-9 items-center justify-center rounded-lg"
+            style={{ background: "var(--success-bg)" }}
+          >
+            <CheckCircle2 className="h-4 w-4" style={{ color: "var(--success)" }} />
+          </div>
+          <h3 className="text-sm font-semibold uppercase tracking-wide" style={{ color: "var(--text-primary)" }}>
+            Key Conclusions
+          </h3>
         </div>
-        <ol className="space-y-2.5">
+        <ol className="space-y-4">
           {summary.conclusions.map((c, i) => (
-            <li key={i} className="flex items-start gap-3">
+            <li key={i} className="flex items-start gap-4">
               <span
-                className="flex-shrink-0 flex h-5 w-5 items-center justify-center rounded-full text-[10px] font-bold"
-                style={{ background: "rgba(59,130,246,0.15)", color: "var(--accent)" }}
+                className="flex-shrink-0 flex h-8 w-8 items-center justify-center rounded-xl text-sm font-bold"
+                style={{ background: "var(--accent-bg)", color: "var(--accent)" }}
               >
                 {i + 1}
               </span>
-              <p className="text-sm leading-relaxed" style={{ color: "var(--text-secondary)" }}>{c}</p>
+              <p className="text-sm leading-relaxed pt-1" style={{ color: "var(--text-secondary)" }}>{c}</p>
             </li>
           ))}
         </ol>
@@ -189,26 +196,40 @@ export default function SummaryPanel({ summary, approvedFindings }: Props) {
       {/* Limitations + methodology */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div
-          className="rounded-xl border p-4"
-          style={{ background: "rgba(234,179,8,0.04)", borderColor: "rgba(234,179,8,0.2)" }}
+          className="card-premium p-5"
+          style={{ background: "var(--warning-bg)", borderColor: "var(--warning-light)" }}
         >
-          <div className="flex items-center gap-2 mb-2">
-            <AlertTriangle className="h-3.5 w-3.5" style={{ color: "#facc15" }} />
-            <h4 className="text-xs font-semibold" style={{ color: "#facc15" }}>Limitations</h4>
+          <div className="flex items-center gap-3 mb-3">
+            <div
+              className="flex h-8 w-8 items-center justify-center rounded-lg"
+              style={{ background: "var(--warning-light)" }}
+            >
+              <AlertTriangle className="h-4 w-4" style={{ color: "var(--warning)" }} />
+            </div>
+            <h4 className="text-xs font-semibold uppercase tracking-wide" style={{ color: "var(--warning)" }}>
+              Limitations
+            </h4>
           </div>
-          <p className="text-xs leading-relaxed" style={{ color: "var(--text-secondary)" }}>
+          <p className="text-sm leading-relaxed" style={{ color: "var(--text-secondary)" }}>
             {summary.limitations}
           </p>
         </div>
         <div
-          className="rounded-xl border p-4"
-          style={{ background: "var(--surface)", borderColor: "var(--border)" }}
+          className="card-premium p-5"
+          style={{ background: "var(--accent-bg)", borderColor: "var(--accent-light)" }}
         >
-          <div className="flex items-center gap-2 mb-2">
-            <BookOpen className="h-3.5 w-3.5" style={{ color: "var(--accent)" }} />
-            <h4 className="text-xs font-semibold" style={{ color: "var(--accent)" }}>Methodology Note</h4>
+          <div className="flex items-center gap-3 mb-3">
+            <div
+              className="flex h-8 w-8 items-center justify-center rounded-lg"
+              style={{ background: "var(--accent-light)" }}
+            >
+              <BookOpen className="h-4 w-4" style={{ color: "var(--accent)" }} />
+            </div>
+            <h4 className="text-xs font-semibold uppercase tracking-wide" style={{ color: "var(--accent)" }}>
+              Methodology Note
+            </h4>
           </div>
-          <p className="text-xs leading-relaxed" style={{ color: "var(--text-secondary)" }}>
+          <p className="text-sm leading-relaxed" style={{ color: "var(--text-secondary)" }}>
             {summary.methodology_note}
           </p>
         </div>

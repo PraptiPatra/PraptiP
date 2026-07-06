@@ -1,9 +1,6 @@
 "use client";
 import { useState, useCallback } from "react";
-import {
-  Brain, Loader2, ChevronLeft, CheckCircle2, XCircle,
-  Layers, MessageSquare, Sparkles, ArrowRight, AlertCircle,
-} from "lucide-react";
+import { Brain, Loader as Loader2, ChevronLeft, CircleCheck as CheckCircle2, Circle as XCircle, Layers, MessageSquare, Sparkles, ArrowRight, CircleAlert as AlertCircle } from "lucide-react";
 import {
   AnalysisResponse, SummaryResponse, CleanAssayData, ArmsConfig,
   runAnalysis, generateSummary, AnalysisFinding,
@@ -36,20 +33,24 @@ const SUMMARY_STAGES = [
 
 function ProgressDots({ stages, current }: { stages: string[]; current: number }) {
   return (
-    <div className="space-y-2 w-72">
+    <div className="space-y-3 w-80">
       {stages.map((s, i) => (
-        <div key={s} className="flex items-center gap-2.5">
+        <div key={s} className="flex items-center gap-3 p-3 rounded-xl" style={{ background: i <= current ? "var(--surface)" : "transparent" }}>
           {i < current ? (
-            <CheckCircle2 className="h-3.5 w-3.5 flex-shrink-0" style={{ color: "var(--success)" }} />
+            <div className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full" style={{ background: "var(--success-bg)" }}>
+              <CheckCircle2 className="h-3.5 w-3.5" style={{ color: "var(--success)" }} />
+            </div>
           ) : i === current ? (
-            <Loader2 className="h-3.5 w-3.5 flex-shrink-0 spin" style={{ color: "var(--accent)" }} />
+            <div className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full" style={{ background: "var(--accent-bg)" }}>
+              <Loader2 className="h-3.5 w-3.5 spin" style={{ color: "var(--accent)" }} />
+            </div>
           ) : (
-            <div className="h-3.5 w-3.5 flex-shrink-0 flex items-center justify-center">
-              <div className="h-1.5 w-1.5 rounded-full" style={{ background: "var(--border)" }} />
+            <div className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full" style={{ background: "var(--border)" }}>
+              <div className="h-2 w-2 rounded-full" style={{ background: "var(--text-faint)" }} />
             </div>
           )}
           <span
-            className="text-xs"
+            className="text-sm"
             style={{ color: i <= current ? "var(--text-secondary)" : "var(--text-muted)" }}
           >
             {s}
@@ -154,54 +155,48 @@ export default function AnalysisPanel({ cleanData, armsConfig, onBack }: Props) 
     return (
       <div className="flex-1 flex flex-col min-h-0">
         {/* Back button header */}
-        <div className="flex items-center gap-3 px-6 py-4 border-b" style={{ borderColor: "var(--border)" }}>
+        <div className="flex items-center gap-3 px-6 py-4 border-b glass" style={{ borderColor: "var(--border-subtle)" }}>
           <button
             onClick={onBack}
-            className="flex items-center gap-1.5 text-xs transition-opacity hover:opacity-70"
-            style={{ color: "var(--text-muted)" }}
+            className="flex items-center gap-2 text-sm font-medium px-3 py-1.5 rounded-lg transition-colors"
+            style={{ color: "var(--text-muted)", background: "var(--background-alt)" }}
           >
             <ChevronLeft className="h-4 w-4" />
             Back to Results
           </button>
-          <span className="text-xs" style={{ color: "var(--border)" }}>|</span>
-          <span className="text-xs font-semibold" style={{ color: "var(--accent)" }}>LLM Analysis</span>
         </div>
 
-        <div className="flex-1 flex flex-col items-center justify-center gap-6 p-12">
+        <div className="flex-1 flex flex-col items-center justify-center gap-8 p-12 animate-fade-in">
           {error ? (
-            <div className="space-y-4 text-center max-w-md">
+            <div className="space-y-5 text-center max-w-md">
               <div
-                className="flex h-16 w-16 mx-auto items-center justify-center rounded-2xl"
-                style={{ background: "rgba(239,68,68,0.1)" }}
+                className="flex h-20 w-20 mx-auto items-center justify-center rounded-2xl"
+                style={{ background: "var(--error-bg)" }}
               >
-                <AlertCircle className="h-7 w-7" style={{ color: "var(--error)" }} />
+                <AlertCircle className="h-9 w-9" style={{ color: "var(--error)" }} />
               </div>
-              <p className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>Analysis failed</p>
-              <p className="text-xs" style={{ color: "#fca5a5" }}>{error}</p>
+              <p className="text-lg font-semibold" style={{ color: "var(--text-primary)" }}>Analysis failed</p>
+              <p className="text-sm leading-relaxed" style={{ color: "var(--error)" }}>{error}</p>
               <button
                 onClick={startAnalysis}
-                className="rounded-xl px-5 py-2.5 text-sm font-semibold"
-                style={{ background: "var(--accent)", color: "#fff" }}
+                className="btn-primary px-6 py-3"
               >
                 Retry Analysis
               </button>
             </div>
           ) : (
             <>
-              <div className="relative flex h-20 w-20 items-center justify-center">
-                <div className="absolute inset-0 rounded-full border-2" style={{ borderColor: "rgba(59,130,246,0.15)" }} />
-                <div
-                  className="absolute inset-0 rounded-full border-t-2 spin"
-                  style={{ borderColor: "var(--accent)", borderRightColor: "transparent", borderBottomColor: "transparent", borderLeftColor: "transparent" }}
-                />
-                <Brain className="h-8 w-8" style={{ color: "var(--accent)" }} />
+              <div className="relative flex h-24 w-24 items-center justify-center">
+                <div className="absolute inset-0 rounded-2xl" style={{ background: "var(--accent-bg)" }} />
+                <div className="absolute inset-2 rounded-xl animate-pulse-soft" style={{ background: "var(--accent-light)" }} />
+                <Brain className="h-10 w-10 relative" style={{ color: "var(--accent)" }} />
               </div>
               <div className="text-center">
-                <p className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>
-                  Analyzing with Claude claude-opus-4-8…
+                <p className="text-lg font-semibold" style={{ color: "var(--text-primary)" }}>
+                  Analyzing with Claude claude-opus-4-8...
                 </p>
-                <p className="text-xs mt-1" style={{ color: "var(--text-muted)" }}>
-                  Sarvam-M · identifying immunological patterns and generating research-backed findings
+                <p className="text-sm mt-2 leading-relaxed max-w-md" style={{ color: "var(--text-secondary)" }}>
+                  Sarvam-M identifying immunological patterns and generating research-backed findings
                 </p>
               </div>
               <ProgressDots stages={ANALYSIS_STAGES} current={loadingStage} />
@@ -216,45 +211,46 @@ export default function AnalysisPanel({ cleanData, armsConfig, onBack }: Props) 
   if (step === "summarizing") {
     return (
       <div className="flex-1 flex flex-col min-h-0">
-        <div className="flex items-center gap-3 px-6 py-4 border-b" style={{ borderColor: "var(--border)" }}>
+        <div className="flex items-center gap-3 px-6 py-4 border-b glass" style={{ borderColor: "var(--border-subtle)" }}>
           <button
             onClick={() => setStep("review")}
-            className="flex items-center gap-1.5 text-xs transition-opacity hover:opacity-70"
-            style={{ color: "var(--text-muted)" }}
+            className="flex items-center gap-2 text-sm font-medium px-3 py-1.5 rounded-lg transition-colors"
+            style={{ color: "var(--text-muted)", background: "var(--background-alt)" }}
           >
             <ChevronLeft className="h-4 w-4" />
             Back to Review
           </button>
         </div>
-        <div className="flex-1 flex flex-col items-center justify-center gap-6 p-12">
+        <div className="flex-1 flex flex-col items-center justify-center gap-8 p-12 animate-fade-in">
           {error ? (
-            <div className="space-y-4 text-center max-w-md">
-              <AlertCircle className="h-10 w-10 mx-auto" style={{ color: "var(--error)" }} />
-              <p className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>Summary generation failed</p>
-              <p className="text-xs" style={{ color: "#fca5a5" }}>{error}</p>
+            <div className="space-y-5 text-center max-w-md">
+              <div
+                className="flex h-16 w-16 mx-auto items-center justify-center rounded-2xl"
+                style={{ background: "var(--error-bg)" }}
+              >
+                <AlertCircle className="h-8 w-8" style={{ color: "var(--error)" }} />
+              </div>
+              <p className="text-lg font-semibold" style={{ color: "var(--text-primary)" }}>Summary generation failed</p>
+              <p className="text-sm" style={{ color: "var(--error)" }}>{error}</p>
               <button
                 onClick={handleGenerateSummary}
-                className="rounded-xl px-5 py-2.5 text-sm font-semibold"
-                style={{ background: "var(--accent)", color: "#fff" }}
+                className="btn-primary px-6 py-3"
               >
                 Retry
               </button>
             </div>
           ) : (
             <>
-              <div className="relative flex h-20 w-20 items-center justify-center">
-                <div className="absolute inset-0 rounded-full border-2" style={{ borderColor: "rgba(59,130,246,0.15)" }} />
-                <div
-                  className="absolute inset-0 rounded-full border-t-2 spin"
-                  style={{ borderColor: "var(--accent)", borderRightColor: "transparent", borderBottomColor: "transparent", borderLeftColor: "transparent" }}
-                />
-                <Sparkles className="h-8 w-8" style={{ color: "var(--accent)" }} />
+              <div className="relative flex h-24 w-24 items-center justify-center">
+                <div className="absolute inset-0 rounded-2xl" style={{ background: "var(--accent-bg)" }} />
+                <div className="absolute inset-2 rounded-xl animate-pulse-soft" style={{ background: "var(--accent-light)" }} />
+                <Sparkles className="h-10 w-10 relative" style={{ color: "var(--accent)" }} />
               </div>
               <div className="text-center">
-                <p className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>
-                  Generating clinical summary…
+                <p className="text-lg font-semibold" style={{ color: "var(--text-primary)" }}>
+                  Generating clinical summary...
                 </p>
-                <p className="text-xs mt-1" style={{ color: "var(--text-muted)" }}>
+                <p className="text-sm mt-2" style={{ color: "var(--text-secondary)" }}>
                   Synthesizing {approvedIds.length} approved findings into a structured report
                 </p>
               </div>
@@ -271,22 +267,21 @@ export default function AnalysisPanel({ cleanData, armsConfig, onBack }: Props) 
     const approved = analysisResult.findings.filter(f => approvedIds.includes(f.id));
     return (
       <div className="flex-1 flex flex-col min-h-0">
-        <div className="flex items-center gap-3 px-6 py-4 border-b" style={{ borderColor: "var(--border)" }}>
+        <div className="flex items-center gap-3 px-6 py-4 border-b glass" style={{ borderColor: "var(--border-subtle)" }}>
           <button
             onClick={() => setStep("review")}
-            className="flex items-center gap-1.5 text-xs transition-opacity hover:opacity-70"
-            style={{ color: "var(--text-muted)" }}
+            className="flex items-center gap-2 text-sm font-medium px-3 py-1.5 rounded-lg transition-colors"
+            style={{ color: "var(--text-muted)", background: "var(--background-alt)" }}
           >
             <ChevronLeft className="h-4 w-4" />
             Back to Review
           </button>
-          <span className="text-xs" style={{ color: "var(--border)" }}>|</span>
-          <span className="text-xs font-semibold" style={{ color: "#4ade80" }}>
+          <span className="badge badge-success ml-auto">
             <CheckCircle2 className="h-3.5 w-3.5 inline mr-1" />
             Report Ready
           </span>
         </div>
-        <div className="flex-1 overflow-y-auto p-6">
+        <div className="flex-1 overflow-y-auto p-6 animate-fade-in">
           <SummaryPanel summary={summaryResult} approvedFindings={approved} />
         </div>
       </div>
@@ -302,33 +297,37 @@ export default function AnalysisPanel({ cleanData, armsConfig, onBack }: Props) 
       <div className="flex-1 flex flex-col min-h-0">
         {/* Header + controls */}
         <div
-          className="flex items-center justify-between px-6 py-3 border-b"
-          style={{ borderColor: "var(--border)" }}
+          className="flex items-center justify-between px-6 py-4 border-b glass"
+          style={{ borderColor: "var(--border-subtle)" }}
         >
           <div className="flex items-center gap-3">
             <button
               onClick={onBack}
-              className="flex items-center gap-1.5 text-xs transition-opacity hover:opacity-70"
-              style={{ color: "var(--text-muted)" }}
+              className="flex items-center gap-2 text-sm font-medium px-3 py-1.5 rounded-lg transition-colors"
+              style={{ color: "var(--text-muted)", background: "var(--background-alt)" }}
             >
               <ChevronLeft className="h-4 w-4" />
               Back to Results
             </button>
-            <span className="text-xs" style={{ color: "var(--border)" }}>|</span>
-            <Brain className="h-4 w-4" style={{ color: "var(--accent)" }} />
-            <span className="text-xs font-semibold" style={{ color: "var(--text-primary)" }}>
-              Human Review — {totalCount} Finding{totalCount !== 1 ? "s" : ""}
+            <div
+              className="flex h-9 w-9 items-center justify-center rounded-lg"
+              style={{ background: "var(--accent-bg)" }}
+            >
+              <Brain className="h-4 w-4" style={{ color: "var(--accent)" }} />
+            </div>
+            <span className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>
+              Human Review - {totalCount} Finding{totalCount !== 1 ? "s" : ""}
             </span>
           </div>
-          <div className="flex items-center gap-2">
-            <span className="text-xs" style={{ color: "var(--text-muted)" }}>
+          <div className="flex items-center gap-3">
+            <span className="text-sm" style={{ color: "var(--text-muted)" }}>
               {approvedCount}/{totalCount} approved
-              {pendingCount > 0 && ` · ${pendingCount} pending`}
+              {pendingCount > 0 && ` - ${pendingCount} pending`}
             </span>
             <button
               onClick={handleApproveAll}
-              className="rounded-lg px-3 py-1.5 text-xs font-medium border transition-colors hover:bg-white/[0.04]"
-              style={{ borderColor: "var(--border)", color: "var(--text-secondary)" }}
+              className="rounded-xl px-4 py-2 text-sm font-medium border-2 transition-colors"
+              style={{ borderColor: "var(--success)", color: "var(--success)", background: "var(--success-bg)" }}
             >
               Approve All
             </button>
@@ -338,36 +337,44 @@ export default function AnalysisPanel({ cleanData, armsConfig, onBack }: Props) 
         {/* Overall interpretation banner */}
         {analysisResult.overall_interpretation && (
           <div
-            className="mx-6 mt-4 rounded-xl border px-4 py-3 flex gap-3"
-            style={{ background: "rgba(59,130,246,0.04)", borderColor: "rgba(59,130,246,0.2)" }}
+            className="mx-6 mt-5 rounded-2xl border p-5 flex gap-4"
+            style={{ background: "var(--accent-bg)", borderColor: "var(--accent-light)" }}
           >
-            <MessageSquare className="h-4 w-4 flex-shrink-0 mt-0.5" style={{ color: "var(--accent)" }} />
-            <p className="text-xs leading-relaxed" style={{ color: "var(--text-secondary)" }}>
-              <span className="font-semibold" style={{ color: "var(--accent)" }}>Overall: </span>
-              {analysisResult.overall_interpretation}
-            </p>
+            <div
+              className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl"
+              style={{ background: "var(--accent-light)" }}
+            >
+              <MessageSquare className="h-5 w-5" style={{ color: "var(--accent)" }} />
+            </div>
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-wide mb-1" style={{ color: "var(--accent)" }}>
+                Overall Interpretation
+              </p>
+              <p className="text-sm leading-relaxed" style={{ color: "var(--text-secondary)" }}>
+                {analysisResult.overall_interpretation}
+              </p>
+            </div>
           </div>
         )}
 
         {/* Cross-assay themes */}
         {analysisResult.cross_assay_themes.length > 0 && (
-          <div className="mx-6 mt-3">
-            <div className="flex items-center gap-2 mb-2">
-              <Layers className="h-3.5 w-3.5" style={{ color: "var(--text-muted)" }} />
-              <span className="text-xs font-medium" style={{ color: "var(--text-muted)" }}>
+          <div className="mx-6 mt-4">
+            <div className="flex items-center gap-2 mb-3">
+              <Layers className="h-4 w-4" style={{ color: "var(--text-muted)" }} />
+              <span className="text-xs font-semibold uppercase tracking-wide" style={{ color: "var(--text-muted)" }}>
                 Cross-assay themes
               </span>
             </div>
-            <div className="flex flex-wrap gap-2">
+            <div className="flex flex-wrap gap-3">
               {analysisResult.cross_assay_themes.map((t, i) => (
                 <div
                   key={i}
-                  className="rounded-lg border px-3 py-2 max-w-xs"
-                  style={{ background: "var(--surface)", borderColor: "var(--border)" }}
+                  className="card-premium p-4 max-w-sm"
                 >
-                  <p className="text-xs font-medium" style={{ color: "var(--text-primary)" }}>{t.theme}</p>
-                  <p className="text-[11px] mt-0.5" style={{ color: "var(--text-muted)" }}>{t.description}</p>
-                  <p className="text-[10px] mt-1" style={{ color: "var(--accent)" }}>
+                  <p className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>{t.theme}</p>
+                  <p className="text-xs mt-1 leading-relaxed" style={{ color: "var(--text-secondary)" }}>{t.description}</p>
+                  <p className="text-xs mt-2 font-mono" style={{ color: "var(--accent)" }}>
                     {t.supporting_findings.join(", ")}
                   </p>
                 </div>
@@ -377,7 +384,7 @@ export default function AnalysisPanel({ cleanData, armsConfig, onBack }: Props) 
         )}
 
         {/* Findings list */}
-        <div className="flex-1 overflow-y-auto p-6 space-y-4 mt-2">
+        <div className="flex-1 overflow-y-auto p-6 space-y-5 mt-3">
           {analysisResult.findings.map((finding, i) => (
             <FindingCard
               key={finding.id}
@@ -392,33 +399,34 @@ export default function AnalysisPanel({ cleanData, armsConfig, onBack }: Props) 
 
         {/* Sticky footer action bar */}
         <div
-          className="border-t px-6 py-4 flex items-center justify-between"
-          style={{ borderColor: "var(--border)", background: "var(--surface)" }}
+          className="border-t px-6 py-5 flex items-center justify-between glass"
+          style={{ borderColor: "var(--border-subtle)" }}
         >
-          <div className="flex items-center gap-3 text-xs" style={{ color: "var(--text-muted)" }}>
+          <div className="flex items-center gap-4 text-sm">
             <span
-              className="flex items-center gap-1.5"
-              style={{ color: approvedCount > 0 ? "#4ade80" : "var(--text-muted)" }}
+              className="flex items-center gap-2 px-3 py-1.5 rounded-lg font-medium"
+              style={{ color: "var(--success)", background: approvedCount > 0 ? "var(--success-bg)" : "transparent" }}
             >
-              <CheckCircle2 className="h-3.5 w-3.5" />
+              <CheckCircle2 className="h-4 w-4" />
               {approvedCount} approved
             </span>
             <span
-              className="flex items-center gap-1.5"
-              style={{ color: rejectedIds.length > 0 ? "#f87171" : "var(--text-muted)" }}
+              className="flex items-center gap-2 px-3 py-1.5 rounded-lg font-medium"
+              style={{ color: "var(--error)", background: rejectedIds.length > 0 ? "var(--error-bg)" : "transparent" }}
             >
-              <XCircle className="h-3.5 w-3.5" />
+              <XCircle className="h-4 w-4" />
               {rejectedIds.length} rejected
             </span>
             {pendingCount > 0 && (
-              <span>{pendingCount} pending review</span>
+              <span className="px-3 py-1.5 rounded-lg" style={{ color: "var(--text-muted)" }}>
+                {pendingCount} pending review
+              </span>
             )}
           </div>
           <button
             onClick={handleGenerateSummary}
             disabled={approvedCount === 0}
-            className="flex items-center gap-2 rounded-xl px-5 py-2.5 text-sm font-semibold transition-all disabled:opacity-40 disabled:cursor-not-allowed"
-            style={{ background: "var(--accent)", color: "#fff" }}
+            className="flex items-center gap-2 rounded-xl px-6 py-3 text-sm font-semibold btn-primary disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <Sparkles className="h-4 w-4" />
             Generate Summary

@@ -1,28 +1,23 @@
 "use client";
 import { useState } from "react";
-import {
-  CheckCircle2, XCircle, ChevronDown, ChevronRight,
-  Microscope, TestTube2, Waves, Dna, ClipboardList,
-  BookOpen, TrendingUp, TrendingDown, Minus, Shield, Zap,
-  AlertCircle, BarChart2,
-} from "lucide-react";
+import { CircleCheck as CheckCircle2, Circle as XCircle, ChevronDown, ChevronRight, Microscope, TestTube as TestTube2, Save as Waves, Dna, ClipboardList, BookOpen, TrendingUp, TrendingDown, Minus, Shield, Zap, CircleAlert as AlertCircle, ChartBar as BarChart2 } from "lucide-react";
 import clsx from "clsx";
 import { AnalysisFinding } from "@/lib/api";
 
-const ASSAY_ICONS: Record<string, React.ElementType> = {
-  histopathology: Microscope,
-  cytokine: TestTube2,
-  flow_cytometry: Waves,
-  nanostring: Dna,
+const ASSAY_CONFIG: Record<string, { icon: React.ElementType; color: string; light: string }> = {
+  histopathology: { icon: Microscope, color: "var(--histopathology)", light: "var(--histopathology-light)" },
+  cytokine: { icon: TestTube2, color: "var(--cytokine)", light: "var(--cytokine-light)" },
+  flow_cytometry: { icon: Waves, color: "var(--flow-cytometry)", light: "var(--flow-cytometry-light)" },
+  nanostring: { icon: Dna, color: "var(--nanostring)", light: "var(--nanostring-light)" },
 };
 
-const CATEGORY_COLORS: Record<string, { bg: string; text: string; border: string }> = {
-  immune_effector:    { bg: "rgba(34,197,94,0.1)",  text: "#4ade80", border: "rgba(34,197,94,0.3)" },
-  cytokine_signature: { bg: "rgba(249,115,22,0.1)", text: "#fb923c", border: "rgba(249,115,22,0.3)" },
-  gene_expression:    { bg: "rgba(168,85,247,0.1)", text: "#c084fc", border: "rgba(168,85,247,0.3)" },
-  immune_suppression: { bg: "rgba(239,68,68,0.1)",  text: "#f87171", border: "rgba(239,68,68,0.3)" },
-  immune_exclusion:   { bg: "rgba(234,179,8,0.1)",  text: "#facc15", border: "rgba(234,179,8,0.3)" },
-  other:              { bg: "rgba(100,116,139,0.1)", text: "#94a3b8", border: "rgba(100,116,139,0.3)" },
+const CATEGORY_STYLES: Record<string, { bg: string; text: string; border: string }> = {
+  immune_effector:    { bg: "var(--success-bg)", text: "var(--success)", border: "var(--success-light)" },
+  cytokine_signature: { bg: "rgba(219,181,106,0.12)", text: "#c9a355", border: "rgba(219,181,106,0.3)" },
+  gene_expression:    { bg: "rgba(181,168,196,0.12)", text: "var(--histopathology)", border: "rgba(181,168,196,0.3)" },
+  immune_suppression: { bg: "var(--error-bg)", text: "var(--error)", border: "var(--error-light)" },
+  immune_exclusion:   { bg: "var(--warning-bg)", text: "var(--warning)", border: "var(--warning-light)" },
+  other:              { bg: "var(--background-alt)", text: "var(--text-muted)", border: "var(--border)" },
 };
 
 const CATEGORY_LABELS: Record<string, string> = {
@@ -43,10 +38,10 @@ const CATEGORY_ICONS: Record<string, React.ElementType> = {
   other: ClipboardList,
 };
 
-const CONFIDENCE_STYLE: Record<string, { color: string; label: string }> = {
-  high:   { color: "#4ade80", label: "High confidence" },
-  medium: { color: "#facc15", label: "Medium confidence" },
-  low:    { color: "#f87171", label: "Low confidence" },
+const CONFIDENCE_STYLE: Record<string, { bg: string; color: string; label: string }> = {
+  high:   { bg: "var(--success-bg)", color: "var(--success)", label: "High" },
+  medium: { bg: "var(--warning-bg)", color: "var(--warning)", label: "Medium" },
+  low:    { bg: "var(--error-bg)", color: "var(--error)", label: "Low" },
 };
 
 interface Props {
@@ -61,73 +56,75 @@ export default function FindingCard({ finding, index, approved, onApprove, onRej
   const [expanded, setExpanded] = useState(false);
   const [refsOpen, setRefsOpen] = useState(false);
 
-  const AssayIcon = ASSAY_ICONS[finding.assay] ?? ClipboardList;
-  const catStyle = CATEGORY_COLORS[finding.category] ?? CATEGORY_COLORS.other;
+  const assayConfig = ASSAY_CONFIG[finding.assay] || { icon: ClipboardList, color: "var(--accent)", light: "var(--accent-light)" };
+  const AssayIcon = assayConfig.icon;
+  const catStyle = CATEGORY_STYLES[finding.category] ?? CATEGORY_STYLES.other;
   const CatIcon = CATEGORY_ICONS[finding.category] ?? ClipboardList;
   const confStyle = CONFIDENCE_STYLE[finding.confidence] ?? CONFIDENCE_STYLE.medium;
 
   const borderColor = approved === true
-    ? "rgba(74,222,128,0.4)"
+    ? "var(--success-light)"
     : approved === false
-    ? "rgba(239,68,68,0.3)"
+    ? "var(--error-light)"
     : "var(--border)";
 
   const cardBg = approved === true
-    ? "rgba(34,197,94,0.04)"
+    ? "var(--success-bg)"
     : approved === false
-    ? "rgba(239,68,68,0.04)"
+    ? "var(--error-bg)"
     : "var(--surface)";
 
   return (
     <div
-      className="rounded-xl border transition-all duration-200"
+      className="card-premium transition-all duration-200"
       style={{ background: cardBg, borderColor }}
     >
       {/* Header row */}
-      <div className="px-4 pt-4 pb-3">
-        <div className="flex items-start gap-3">
+      <div className="p-5">
+        <div className="flex items-start gap-4">
           {/* Index badge */}
           <div
-            className="flex-shrink-0 flex h-7 w-7 items-center justify-center rounded-lg text-xs font-bold"
-            style={{ background: "var(--surface-raised)", color: "var(--text-muted)" }}
+            className="flex-shrink-0 flex h-9 w-9 items-center justify-center rounded-xl text-sm font-bold"
+            style={{ background: assayConfig.light, color: assayConfig.color }}
           >
             {index + 1}
           </div>
 
           <div className="flex-1 min-w-0">
             {/* Title + meta chips */}
-            <div className="flex flex-wrap items-center gap-2 mb-1.5">
-              <span className="text-sm font-semibold leading-snug" style={{ color: "var(--text-primary)" }}>
-                {finding.title}
-              </span>
-            </div>
+            <p className="text-sm font-semibold leading-snug mb-2" style={{ color: "var(--text-primary)" }}>
+              {finding.title}
+            </p>
 
             <div className="flex flex-wrap items-center gap-2">
               {/* Assay chip */}
               <span
-                className="flex items-center gap-1 rounded-md px-2 py-0.5 text-[10px] font-medium border"
-                style={{ borderColor: "var(--border)", color: "var(--text-muted)", background: "var(--background)" }}
+                className="flex items-center gap-1.5 rounded-lg px-3 py-1 text-xs font-medium"
+                style={{ background: assayConfig.light, color: assayConfig.color }}
               >
-                <AssayIcon className="h-3 w-3" />
+                <AssayIcon className="h-3.5 w-3.5" />
                 {finding.assay.replace("_", " ")}
               </span>
 
               {/* Category chip */}
               <span
-                className="flex items-center gap-1 rounded-md px-2 py-0.5 text-[10px] font-medium border"
-                style={{ background: catStyle.bg, color: catStyle.text, borderColor: catStyle.border }}
+                className="flex items-center gap-1.5 rounded-lg px-3 py-1 text-xs font-medium"
+                style={{ background: catStyle.bg, color: catStyle.text }}
               >
-                <CatIcon className="h-3 w-3" />
+                <CatIcon className="h-3.5 w-3.5" />
                 {CATEGORY_LABELS[finding.category] ?? finding.category}
               </span>
 
               {/* Confidence */}
-              <span className="text-[10px] font-medium" style={{ color: confStyle.color }}>
-                ● {confStyle.label}
+              <span
+                className="rounded-lg px-3 py-1 text-xs font-semibold"
+                style={{ background: confStyle.bg, color: confStyle.color }}
+              >
+                {confStyle.label} confidence
               </span>
 
               {/* Feature count */}
-              <span className="text-[10px]" style={{ color: "var(--text-muted)" }}>
+              <span className="text-xs" style={{ color: "var(--text-muted)" }}>
                 {finding.features_cited.length} feature{finding.features_cited.length !== 1 ? "s" : ""} cited
               </span>
             </div>
@@ -138,82 +135,87 @@ export default function FindingCard({ finding, index, approved, onApprove, onRej
             <button
               onClick={onApprove}
               title="Approve finding"
-              className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium border transition-all"
+              className="flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-semibold border-2 transition-all"
               style={
                 approved === true
-                  ? { background: "rgba(34,197,94,0.2)", borderColor: "#4ade80", color: "#4ade80" }
+                  ? { background: "var(--success-light)", borderColor: "var(--success)", color: "var(--success)" }
                   : { background: "transparent", borderColor: "var(--border)", color: "var(--text-muted)" }
               }
             >
-              <CheckCircle2 className="h-3.5 w-3.5" />
-              Approve
+              <CheckCircle2 className="h-4 w-4" />
+              {approved === true ? "Approved" : "Approve"}
             </button>
             <button
               onClick={onReject}
               title="Reject finding"
-              className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium border transition-all"
+              className="flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-semibold border-2 transition-all"
               style={
                 approved === false
-                  ? { background: "rgba(239,68,68,0.15)", borderColor: "#f87171", color: "#f87171" }
+                  ? { background: "var(--error-light)", borderColor: "var(--error)", color: "var(--error)" }
                   : { background: "transparent", borderColor: "var(--border)", color: "var(--text-muted)" }
               }
             >
-              <XCircle className="h-3.5 w-3.5" />
-              Reject
+              <XCircle className="h-4 w-4" />
+              {approved === false ? "Rejected" : "Reject"}
             </button>
           </div>
         </div>
       </div>
 
-      {/* Feature evidence — always visible (top 4 features) */}
+      {/* Feature evidence */}
       {finding.features_cited.length > 0 && (
-        <div className="px-4 pb-3">
+        <div className="px-5 pb-5">
           <div
-            className="rounded-lg overflow-hidden border"
-            style={{ borderColor: "var(--border-subtle)" }}
+            className="rounded-xl overflow-hidden border"
+            style={{ borderColor: "var(--border)" }}
           >
-            <table className="w-full text-[11px]">
+            <table className="w-full text-xs">
               <thead>
-                <tr style={{ background: "var(--surface-raised)" }}>
-                  <th className="px-3 py-1.5 text-left font-medium" style={{ color: "var(--text-muted)" }}>Feature</th>
-                  <th className="px-3 py-1.5 text-right font-medium" style={{ color: "var(--text-muted)" }}>ρ (Spearman)</th>
-                  <th className="px-3 py-1.5 text-right font-medium" style={{ color: "var(--text-muted)" }}>p-value</th>
-                  <th className="px-3 py-1.5 text-center font-medium" style={{ color: "var(--text-muted)" }}>Direction</th>
+                <tr style={{ background: "var(--background-alt)" }}>
+                  <th className="px-4 py-2.5 text-left font-semibold" style={{ color: "var(--text-muted)" }}>Feature</th>
+                  <th className="px-4 py-2.5 text-right font-semibold" style={{ color: "var(--text-muted)" }}>p (Spearman)</th>
+                  <th className="px-4 py-2.5 text-right font-semibold" style={{ color: "var(--text-muted)" }}>p-value</th>
+                  <th className="px-4 py-2.5 text-center font-semibold" style={{ color: "var(--text-muted)" }}>Direction</th>
                 </tr>
               </thead>
               <tbody>
                 {finding.features_cited.slice(0, expanded ? undefined : 4).map((fc, i) => (
                   <tr
                     key={i}
-                    className="border-t"
-                    style={{ borderColor: "var(--border-subtle)" }}
+                    style={{
+                      borderColor: "var(--border-subtle)",
+                      borderTop: "1px solid var(--border-subtle)",
+                      background: i % 2 === 0 ? "var(--surface)" : "var(--background)"
+                    }}
                   >
-                    <td className="px-3 py-1.5 font-mono" style={{ color: "var(--text-primary)" }}>
+                    <td className="px-4 py-2.5 font-mono font-medium" style={{ color: "var(--text-primary)" }}>
                       {fc.name}
                     </td>
                     <td
-                      className="px-3 py-1.5 text-right font-mono font-medium"
+                      className="px-4 py-2.5 text-right font-mono font-semibold"
                       style={{
                         color: fc.rho === null ? "var(--text-muted)" :
-                          fc.rho > 0 ? "#4ade80" : "#f87171"
+                          fc.rho > 0 ? "var(--success)" : "var(--error)"
                       }}
                     >
                       {fc.rho !== null ? (fc.rho >= 0 ? "+" : "") + fc.rho.toFixed(3) : "—"}
                     </td>
-                    <td className="px-3 py-1.5 text-right font-mono" style={{ color: "var(--text-secondary)" }}>
+                    <td className="px-4 py-2.5 text-right font-mono" style={{ color: "var(--text-secondary)" }}>
                       {fc.p_value !== null ? fc.p_value.toFixed(4) : "—"}
                     </td>
-                    <td className="px-3 py-1.5 text-center">
+                    <td className="px-4 py-2.5 text-center">
                       {fc.direction === "positive" ? (
-                        <span className="inline-flex items-center gap-0.5" style={{ color: "#4ade80" }}>
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium" style={{ background: "var(--success-bg)", color: "var(--success)" }}>
                           <TrendingUp className="h-3 w-3" /> pos
                         </span>
                       ) : fc.direction === "negative" ? (
-                        <span className="inline-flex items-center gap-0.5" style={{ color: "#f87171" }}>
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium" style={{ background: "var(--error-bg)", color: "var(--error)" }}>
                           <TrendingDown className="h-3 w-3" /> neg
                         </span>
                       ) : (
-                        <span style={{ color: "var(--text-muted)" }}><Minus className="h-3 w-3 inline" /></span>
+                        <span className="inline-flex items-center" style={{ color: "var(--text-muted)" }}>
+                          <Minus className="h-3 w-3" />
+                        </span>
                       )}
                     </td>
                   </tr>
@@ -224,45 +226,45 @@ export default function FindingCard({ finding, index, approved, onApprove, onRej
           {finding.features_cited.length > 4 && (
             <button
               onClick={() => setExpanded(!expanded)}
-              className="mt-1.5 flex items-center gap-1 text-[11px] transition-opacity hover:opacity-70"
-              style={{ color: "var(--accent)" }}
+              className="mt-3 flex items-center gap-2 text-xs font-medium rounded-lg px-3 py-1.5"
+              style={{ color: "var(--accent)", background: "var(--accent-bg)" }}
             >
-              {expanded ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
+              {expanded ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
               {expanded ? "Show fewer features" : `Show all ${finding.features_cited.length} features`}
             </button>
           )}
         </div>
       )}
 
-      {/* Interpretation + clinical implication — expandable */}
+      {/* Interpretation + clinical implication */}
       <div
-        className="border-t px-4 py-3 space-y-2.5"
+        className="border-t px-5 py-5 space-y-4"
         style={{ borderColor: "var(--border-subtle)" }}
       >
         <div>
-          <p className="text-[11px] font-semibold mb-1" style={{ color: "var(--text-secondary)" }}>
+          <p className="text-xs font-semibold uppercase tracking-wide mb-2" style={{ color: "var(--text-muted)" }}>
             Biological Interpretation
           </p>
-          <p className="text-xs leading-relaxed" style={{ color: "var(--text-primary)" }}>
+          <p className="text-sm leading-relaxed" style={{ color: "var(--text-primary)" }}>
             {finding.interpretation}
           </p>
         </div>
         <div>
-          <p className="text-[11px] font-semibold mb-1" style={{ color: "var(--text-secondary)" }}>
+          <p className="text-xs font-semibold uppercase tracking-wide mb-2" style={{ color: "var(--text-muted)" }}>
             Clinical Implication
           </p>
-          <p className="text-xs leading-relaxed" style={{ color: "var(--text-secondary)" }}>
+          <p className="text-sm leading-relaxed" style={{ color: "var(--text-secondary)" }}>
             {finding.clinical_implication}
           </p>
         </div>
 
         {/* Confidence rationale */}
         <div
-          className="rounded-lg px-3 py-2"
-          style={{ background: "rgba(255,255,255,0.02)", border: "1px solid var(--border-subtle)" }}
+          className="rounded-xl px-4 py-3"
+          style={{ background: confStyle.bg, border: `1px solid ${confStyle.color}40` }}
         >
-          <p className="text-[11px]" style={{ color: confStyle.color }}>
-            <span className="font-medium">Confidence — {finding.confidence}: </span>
+          <p className="text-sm" style={{ color: confStyle.color }}>
+            <span className="font-semibold">Confidence - {finding.confidence}: </span>
             {finding.confidence_rationale}
           </p>
         </div>
@@ -272,25 +274,25 @@ export default function FindingCard({ finding, index, approved, onApprove, onRej
           <div>
             <button
               onClick={() => setRefsOpen(!refsOpen)}
-              className="flex items-center gap-1.5 text-[11px] font-medium transition-opacity hover:opacity-70"
-              style={{ color: "var(--accent)" }}
+              className="flex items-center gap-2 text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors"
+              style={{ color: "var(--accent)", background: "var(--accent-bg)" }}
             >
-              <BookOpen className="h-3.5 w-3.5" />
-              {refsOpen ? "Hide" : "Show"} {finding.research_refs.length} research reference{finding.research_refs.length !== 1 ? "s" : ""}
-              {refsOpen ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
+              <BookOpen className="h-4 w-4" />
+              {refsOpen ? "Hide" : "Show"} {finding.research_refs.length} reference{finding.research_refs.length !== 1 ? "s" : ""}
+              {refsOpen ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
             </button>
             {refsOpen && (
-              <div className="mt-2 space-y-2">
+              <div className="mt-3 space-y-2">
                 {finding.research_refs.map((ref, i) => (
                   <div
                     key={i}
-                    className="rounded-lg border px-3 py-2 space-y-0.5"
-                    style={{ borderColor: "rgba(59,130,246,0.2)", background: "rgba(59,130,246,0.04)" }}
+                    className="rounded-xl border p-4"
+                    style={{ borderColor: "var(--accent-light)", background: "var(--accent-bg)" }}
                   >
-                    <p className="text-[11px] font-medium" style={{ color: "var(--text-primary)" }}>
+                    <p className="text-sm font-medium mb-1" style={{ color: "var(--text-primary)" }}>
                       {ref.citation}
                     </p>
-                    <p className="text-[11px]" style={{ color: "var(--text-muted)" }}>
+                    <p className="text-xs leading-relaxed" style={{ color: "var(--text-secondary)" }}>
                       {ref.relevance}
                     </p>
                   </div>

@@ -1,15 +1,15 @@
 "use client";
 import { useState } from "react";
 import React from "react";
-import { Download, ChevronDown, ChevronRight, Database, Microscope, TestTube2, Waves, Dna, ClipboardList, Sliders, CheckCircle2, SkipForward } from "lucide-react";
+import { Download, ChevronDown, ChevronRight, Database, Microscope, TestTube as TestTube2, Save as Waves, Dna, ClipboardList, FileSliders as Sliders, CircleCheck as CheckCircle2, SkipForward } from "lucide-react";
 import clsx from "clsx";
 import { CleanAssayData, FeatureSelectionSummary } from "@/lib/api";
 
-const ASSAY_ICON_MAP: Record<string, React.ElementType> = {
-  histopathology: Microscope,
-  cytokine: TestTube2,
-  flow_cytometry: Waves,
-  nanostring: Dna,
+const ASSAY_CONFIG: Record<string, { icon: React.ElementType; color: string; light: string }> = {
+  histopathology: { icon: Microscope, color: "var(--histopathology)", light: "var(--histopathology-light)" },
+  cytokine: { icon: TestTube2, color: "var(--cytokine)", light: "var(--cytokine-light)" },
+  flow_cytometry: { icon: Waves, color: "var(--flow-cytometry)", light: "var(--flow-cytometry-light)" },
+  nanostring: { icon: Dna, color: "var(--nanostring)", light: "var(--nanostring-light)" },
 };
 
 const PREVIEW_ROWS = 5;
@@ -26,31 +26,35 @@ function FeatureSelectionBadge({ fs }: { fs: FeatureSelectionSummary }) {
   if (fs.skipped) {
     return (
       <div
-        className="flex items-center gap-2 rounded-lg border px-3 py-2 text-xs"
-        style={{ borderColor: "var(--border)", background: "rgba(255,255,255,0.02)", color: "var(--text-muted)" }}
+        className="flex items-center gap-3 rounded-xl border px-4 py-3 text-sm"
+        style={{ borderColor: "var(--border)", background: "var(--background-alt)", color: "var(--text-muted)" }}
       >
-        <SkipForward className="h-3.5 w-3.5 flex-shrink-0" />
+        <div className="flex h-8 w-8 items-center justify-center rounded-lg" style={{ background: "var(--surface)" }}>
+          <SkipForward className="h-4 w-4" style={{ color: "var(--text-muted)" }} />
+        </div>
         <span>Feature selection skipped — {fs.skip_reason ?? "small panel, all features retained"}</span>
       </div>
     );
   }
   return (
     <div
-      className="flex items-start gap-2 rounded-lg border px-3 py-2.5"
-      style={{ borderColor: "rgba(59,130,246,0.3)", background: "rgba(59,130,246,0.06)" }}
+      className="flex items-start gap-3 rounded-xl border px-4 py-3"
+      style={{ borderColor: "var(--accent-light)", background: "var(--accent-bg)" }}
     >
-      <Sliders className="h-3.5 w-3.5 flex-shrink-0 mt-0.5" style={{ color: "var(--accent)" }} />
-      <div className="space-y-0.5">
+      <div className="flex h-8 w-8 items-center justify-center rounded-lg flex-shrink-0" style={{ background: "var(--accent-light)" }}>
+        <Sliders className="h-4 w-4" style={{ color: "var(--accent)" }} />
+      </div>
+      <div className="space-y-1">
         <div className="flex items-center gap-2">
-          <span className="text-xs font-medium" style={{ color: "var(--accent)" }}>
+          <span className="text-sm font-semibold" style={{ color: "var(--accent)" }}>
             {METHOD_LABELS[fs.method_used] ?? fs.method_used}
           </span>
-          <span className="text-[10px] rounded px-1.5 py-0.5" style={{ background: "rgba(59,130,246,0.15)", color: "var(--accent)" }}>
+          <span className="text-xs rounded-lg px-2.5 py-1 font-medium" style={{ background: "var(--accent)", color: "white" }}>
             {fs.selected_count} / {fs.total_features} features
           </span>
         </div>
         {fs.skip_reason && (
-          <p className="text-[11px]" style={{ color: "var(--text-muted)" }}>{fs.skip_reason}</p>
+          <p className="text-xs" style={{ color: "var(--text-secondary)" }}>{fs.skip_reason}</p>
         )}
       </div>
     </div>
@@ -60,13 +64,14 @@ function FeatureSelectionBadge({ fs }: { fs: FeatureSelectionSummary }) {
 function DataTable({ data }: { data: CleanAssayData }) {
   const [expanded, setExpanded] = useState(false);
   const isNano = data.assay_name === "nanostring";
+  const config = ASSAY_CONFIG[data.assay_name] || { color: "var(--accent)", light: "var(--accent-light)" };
   // For NanoString limit visible columns to avoid DOM explosion
   const visibleCols = isNano ? data.columns.slice(0, 10) : data.columns;
   const moreColsCount = data.columns.length - visibleCols.length;
   const rows = expanded ? data.rows : data.rows.slice(0, PREVIEW_ROWS);
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-4">
       {/* Metadata chips */}
       <div className="flex flex-wrap gap-2">
         {Object.entries(data.metadata).map(([k, v]) => {
@@ -74,40 +79,41 @@ function DataTable({ data }: { data: CleanAssayData }) {
           return (
             <span
               key={k}
-              className="rounded-lg px-2.5 py-1 text-[10px] font-mono"
-              style={{ background: "var(--background)", color: "var(--text-secondary)", border: "1px solid var(--border)" }}
+              className="rounded-xl px-3 py-1.5 text-xs font-medium"
+              style={{ background: "var(--background-alt)", color: "var(--text-secondary)", border: "1px solid var(--border)" }}
             >
-              {k}: <span style={{ color: "var(--accent)" }}>{String(v)}</span>
+              {k}: <span style={{ color: config.color }}>{String(v)}</span>
             </span>
           );
         })}
         {isNano && (
           <span
-            className="rounded-lg px-2.5 py-1 text-[10px] font-mono"
-            style={{ background: "var(--background)", color: "var(--text-secondary)", border: "1px solid var(--border)" }}
+            key="total_cols"
+            className="rounded-xl px-3 py-1.5 text-xs font-medium"
+            style={{ background: "var(--background-alt)", color: "var(--text-secondary)", border: "1px solid var(--border)" }}
           >
-            total columns: <span style={{ color: "var(--accent)" }}>{data.columns.length}</span>
+            total columns: <span style={{ color: config.color }}>{data.columns.length}</span>
           </span>
         )}
       </div>
 
       {/* Table */}
-      <div className="overflow-x-auto rounded-lg border" style={{ borderColor: "var(--border)" }}>
+      <div className="overflow-x-auto rounded-xl border" style={{ borderColor: "var(--border)" }}>
         <table className="w-full text-xs border-collapse">
           <thead>
-            <tr style={{ background: "var(--surface-raised)" }}>
+            <tr style={{ background: "var(--background-alt)" }}>
               {visibleCols.map((col) => (
                 <th
                   key={col}
-                  className="px-3 py-2 text-left font-medium whitespace-nowrap border-b"
-                  style={{ color: "var(--text-secondary)", borderColor: "var(--border)" }}
+                  className="px-4 py-3 text-left font-semibold whitespace-nowrap border-b"
+                  style={{ color: "var(--text-primary)", borderColor: "var(--border)" }}
                 >
                   {col}
                 </th>
               ))}
               {moreColsCount > 0 && (
                 <th
-                  className="px-3 py-2 text-left font-medium whitespace-nowrap border-b"
+                  className="px-4 py-3 text-left font-medium whitespace-nowrap border-b"
                   style={{ color: "var(--text-muted)", borderColor: "var(--border)" }}
                 >
                   +{moreColsCount} more cols
@@ -119,19 +125,22 @@ function DataTable({ data }: { data: CleanAssayData }) {
             {rows.map((row, ri) => (
               <tr
                 key={ri}
-                className="transition-colors hover:bg-white/[0.015]"
-                style={{ borderBottom: ri < rows.length - 1 ? "1px solid var(--border-subtle)" : undefined }}
+                className="transition-colors"
+                style={{
+                  borderBottom: ri < rows.length - 1 ? "1px solid var(--border-subtle)" : undefined,
+                  background: ri % 2 === 0 ? "var(--surface)" : "var(--background)"
+                }}
               >
                 {visibleCols.map((col) => {
                   const val = row[col];
                   return (
                     <td
                       key={col}
-                      className="px-3 py-2 whitespace-nowrap font-mono"
-                      style={{ color: typeof val === "number" ? "var(--accent)" : "var(--text-primary)" }}
+                      className="px-4 py-2.5 whitespace-nowrap font-mono text-xs"
+                      style={{ color: typeof val === "number" ? config.color : "var(--text-primary)" }}
                     >
                       {val === null || val === undefined ? (
-                        <span style={{ color: "var(--text-muted)" }}>—</span>
+                        <span style={{ color: "var(--text-faint)" }}>—</span>
                       ) : typeof val === "number" ? (
                         Number.isInteger(val) ? String(val) : val.toFixed(3)
                       ) : (
@@ -140,7 +149,7 @@ function DataTable({ data }: { data: CleanAssayData }) {
                     </td>
                   );
                 })}
-                {moreColsCount > 0 && <td />}
+                {moreColsCount > 0 && <td style={{ background: "transparent" }} />}
               </tr>
             ))}
           </tbody>
@@ -150,10 +159,10 @@ function DataTable({ data }: { data: CleanAssayData }) {
       {data.rows.length > PREVIEW_ROWS && (
         <button
           onClick={() => setExpanded(!expanded)}
-          className="flex items-center gap-1 text-xs transition-opacity hover:opacity-80"
-          style={{ color: "var(--accent)" }}
+          className="flex items-center gap-2 text-sm font-medium rounded-lg px-3 py-2 transition-all"
+          style={{ color: "var(--accent)", background: "var(--accent-bg)" }}
         >
-          {expanded ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
+          {expanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
           {expanded ? "Show less" : `Show all ${data.rows.length} rows`}
         </button>
       )}
@@ -185,74 +194,97 @@ export default function OutputPanel({ cleanData }: { cleanData: Record<string, C
   };
 
   return (
-    <div className="space-y-5 animate-fade-in">
+    <div className="space-y-6 animate-fade-in">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <Database className="h-4 w-4" style={{ color: "var(--accent)" }} />
-          <h3 className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>
-            Validated Output
-          </h3>
-          <span className="text-[10px] rounded px-2 py-0.5 border font-mono" style={{ borderColor: "var(--border)", color: "var(--text-muted)" }}>
-            structured
-          </span>
+        <div className="flex items-center gap-3">
+          <div
+            className="flex h-10 w-10 items-center justify-center rounded-xl"
+            style={{ background: "var(--accent-bg)" }}
+          >
+            <Database className="h-5 w-5" style={{ color: "var(--accent)" }} />
+          </div>
+          <div>
+            <h3 className="text-base font-semibold" style={{ color: "var(--text-primary)" }}>
+              Validated Output
+            </h3>
+            <span className="text-xs" style={{ color: "var(--text-muted)" }}>
+              Structured data ready for downstream analysis
+            </span>
+          </div>
         </div>
         <button
           onClick={downloadAll}
-          className="flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors hover:bg-blue-500/10"
-          style={{ borderColor: "var(--accent)", color: "var(--accent)" }}
+          className="flex items-center gap-2 rounded-xl border px-4 py-2.5 text-sm font-semibold transition-all"
+          style={{ borderColor: "var(--accent)", color: "var(--accent)", background: "var(--accent-bg)" }}
         >
-          <Download className="h-3.5 w-3.5" />
+          <Download className="h-4 w-4" />
           Export All
         </button>
       </div>
 
       {/* Assay tabs */}
-      <div className="flex gap-1 flex-wrap">
-        {Object.entries(cleanData).map(([key, d]) => (
-          <button
-            key={key}
-            onClick={() => setOpenAssay(openAssay === key ? null : key)}
-            className={clsx(
-              "flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium border transition-all"
-            )}
-            style={
-              openAssay === key
-                ? { background: "rgba(59,130,246,0.15)", borderColor: "var(--accent)", color: "var(--accent)" }
-                : { background: "transparent", borderColor: "var(--border)", color: "var(--text-secondary)" }
-            }
-          >
-            {(() => { const Icon = ASSAY_ICON_MAP[key] ?? ClipboardList; return <Icon className="h-3.5 w-3.5" />; })()}
-            {d.display_name}
-            <span
-              className="rounded-full px-1.5 py-0.5 text-[10px]"
-              style={{ background: "var(--surface-raised)", color: "var(--text-muted)" }}
+      <div className="flex gap-2 flex-wrap">
+        {Object.entries(cleanData).map(([key, d]) => {
+          const config = ASSAY_CONFIG[key] || { color: "var(--accent)", light: "var(--accent-light)" };
+          const Icon = config.icon || ClipboardList;
+          const isActive = openAssay === key;
+
+          return (
+            <button
+              key={key}
+              onClick={() => setOpenAssay(openAssay === key ? null : key)}
+              className={clsx(
+                "flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-medium border-2 transition-all"
+              )}
+              style={
+                isActive
+                  ? { background: config.light, borderColor: config.color, color: config.color, boxShadow: `0 2px 8px ${config.color}20` }
+                  : { background: "var(--surface)", borderColor: "var(--border)", color: "var(--text-secondary)" }
+              }
             >
-              n={d.n_samples}
-            </span>
-          </button>
-        ))}
+              <Icon className="h-4 w-4" />
+              {d.display_name}
+              <span
+                className="rounded-lg px-2 py-0.5 text-xs font-semibold"
+                style={{ background: isActive ? "var(--surface)" : "var(--background-alt)", color: isActive ? config.color : "var(--text-muted)" }}
+              >
+                n={d.n_samples}
+              </span>
+            </button>
+          );
+        })}
       </div>
 
       {/* Active assay data */}
       {openAssay && cleanData[openAssay] && (
         <div
-          className="rounded-xl border p-4 space-y-3"
-          style={{ background: "var(--surface)", borderColor: "var(--border)" }}
+          className="card-premium p-6 space-y-4 animate-fade-in"
         >
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              {(() => { const Icon = ASSAY_ICON_MAP[openAssay] ?? ClipboardList; return <Icon className="h-4 w-4" style={{ color: "var(--accent)" }} />; })()}
-              <span className="text-sm font-medium" style={{ color: "var(--text-primary)" }}>
+            <div className="flex items-center gap-3">
+              {(() => {
+                const config = ASSAY_CONFIG[openAssay] || { icon: ClipboardList, color: "var(--accent)" };
+                const Icon = config.icon;
+                return (
+                  <div
+                    className="flex h-10 w-10 items-center justify-center rounded-xl"
+                    style={{ background: `${config.color}15` }}
+                  >
+                    <Icon className="h-5 w-5" style={{ color: config.color }} />
+                  </div>
+                );
+              })()}
+              <span className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>
                 {cleanData[openAssay].display_name}
               </span>
             </div>
             <button
               onClick={() => downloadJSON(cleanData[openAssay])}
-              className="flex items-center gap-1 text-xs transition-opacity hover:opacity-70"
-              style={{ color: "var(--text-muted)" }}
+              className="flex items-center gap-1.5 text-xs font-medium rounded-lg px-3 py-1.5 transition-colors"
+              style={{ color: "var(--text-secondary)", background: "var(--background-alt)" }}
             >
-              <Download className="h-3 w-3" />
+              <Download className="h-3.5 w-3.5" />
               JSON
             </button>
           </div>
